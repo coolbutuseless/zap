@@ -1,0 +1,541 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+
+library(zap)
+
+if (FALSE) {
+# Check for functions which do not have an @examples block for roxygen
+system("grep -c examples man/*Rd", intern = TRUE) |> 
+  grep(":0$", x = _, value = TRUE)
+}
+
+if (FALSE) {
+  covr::report(covr::package_coverage(
+    line_exclusions = list("src/zstd/zstd.c")
+  ))
+}
+
+if (FALSE) {
+  pkgdown::build_site(override = list(destination = "../coolbutuseless.github.io/package/zap"))
+}
+
+# Makevars options to do some deep testing for CRAN
+
+# Type conversions are sane
+# PKG_FLAG=-Wconversion
+
+# Pointer overflow checks i.e. dodgy pointer arithmetic
+# PKG_CFLAGS+=-fsanitize=pointer-overflow -fsanitize-trap=pointer-overflow
+# Then run in the debugger:
+# R -d lldb 
+# run
+# testthat::test_local()
+
+```
+
+# zap <img src="man/figures/logo.png" align="right" height=230/>
+
+<!-- badges: start -->
+![](https://img.shields.io/badge/cool-useless-green.svg)
+[![CRAN](https://www.r-pkg.org/badges/version/zap)](https://CRAN.R-project.org/package=zap)
+[![R-CMD-check](https://github.com/coolbutuseless/zap/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/coolbutuseless/zap/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
+`zap` is an alternate serialization framework for R objects. It features 
+high compression at fast speeds.
+
+Two aims for this package:
+
+1. Provide an alternate serialization framework to the one built-in to R.  
+2. Write highly compressed data quickly by leveraging contextual information
+
+
+### What's in the box
+
+* `zap_read()`, `zap_write()` to read/write objects to raw vectors and files
+* `zap_version()` the version of the set of data transformations used internally
+* `zap_opts()` a way of building more detailed configuration options to use with 
+  `zap()`
+* `zap_count()` a fast simple count of the bytes needed to hold
+  the *uncompressed* output of `zap_write()` (i.e. when `compress = "none"`)
+
+### Caveats
+
+Speed and compression performance are very dependent on the data being serialized.
+
+The characteristics of any floating point data will
+have a big influence, and it is worth trying other floating point transformations
+e.g. `zap_write(x, dbl = "shuffle")`
+
+For small data, there is less of a difference between the different serialization options.
+
+### Installation
+
+<!-- This package can be installed from CRAN -->
+
+<!-- ``` r -->
+<!-- install.packages('zap') -->
+<!-- ``` -->
+
+You can install the latest development version from
+[GitHub](https://github.com/coolbutuseless/zap) with:
+
+``` r
+# install.package('remotes')
+remotes::install_github('coolbutuseless/zap')
+```
+
+Pre-built source/binary versions can also be installed from
+[R-universe](https://r-universe.dev)
+
+<!-- ``` r -->
+<!-- install.packages('zap', repos = c('https://coolbutuseless.r-universe.dev', 'https://cloud.r-project.org')) -->
+<!-- ``` -->
+
+
+```{r echo=FALSE}
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+  library(ggrepel)
+  library(qs2)
+  library(zap)
+})
+
+
+benchmark <- function(x, skip_test = FALSE) {
+  
+  tmp <- tempfile()
+  
+  if (!skip_test) {
+    enc <- zap_write(x)
+    result <- zap_read(enc)
+    if (!identical(result, x)) {
+      message("Not identical raw ---------------------------------------------------------")
+    }
+    
+    zap_write(x, tmp)
+    result <- zap_read(tmp)
+    if (!identical(result, x)) {
+      message("Not identical file ---------------------------------------------------------")
+    }
+    
+  }
+  
+  res <- bench::mark(
+    `saveRDS(compress=FALSE)`  = saveRDS(x, file = tmp, compress = FALSE),
+    `qs2::qs_save()`           = qs2::qs_save(x, tmp, nthreads = 1),
+    `zap_write()`              = zap_write(x, tmp),
+    # `zap_write(dbl=delta_shuffle)`   = zap_write(x, tmp, dbl = 'delta_shuffle'),
+    # `zap_write(dbl=shuffle)`   = zap_write(x, tmp, dbl = 'shuffle'),
+    # `zap_write(dbl=raw)`       = zap_write(x, tmp, dbl = 'raw'),
+    `saveRDS(zstd)`            = saveRDS(x, tmp, compress = "zstd"),
+    `saveRDS(xz)`              = saveRDS(x, tmp, compress = "xz"),
+    # ser_zstd       = writeBin(memCompress(serialize(x, NULL), 'zstd'), tmp),
+    check = FALSE
+  )
+  
+  sizes <- c(
+    {saveRDS(x, file = tmp, compress = FALSE); file.size(tmp)},
+    {qs2::qs_save(x, tmp, nthreads = 1)      ; file.size(tmp)},
+    {zap_write(x, tmp); file.size(tmp)},
+    # {zap_write(x, tmp, dbl = 'delta_shuffle'); file.size(tmp)},
+    # {zap_write(x, tmp, dbl = 'shuffle'); file.size(tmp)},
+    # {zap_write(x, tmp, dbl = 'raw') ; file.size(tmp)},
+    {saveRDS(x, tmp, compress = "zstd")      ; file.size(tmp)},
+    {saveRDS(x, tmp, compress = "xz")        ; file.size(tmp)}#,
+    # {writeBin(memCompress(serialize(x, NULL), 'zstd'), tmp); file.size(tmp)}
+  )
+  
+  res <- res[, 1:4]
+  res$expression <- as.character(res$expression)
+  res$size <- sizes
+  res
+}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Decompression benchmark
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+unbenchmark <- function(x) {
+  
+  tmp <- tempfile()
+  zap_write(x, tmp)
+  result <- zap_read(tmp)
+  if (!identical(result, x)) {
+    message("Not identical ---------------------------------------------------------")
+  }
+  
+  sizes <- c(
+    {tmp01 <- tempfile(); saveRDS(x, file = tmp01, compress = FALSE) ; file.size(tmp01)},
+    {tmp07 <- tempfile(); qs2::qs_save(x, tmp07, nthreads = 1)       ; file.size(tmp07)},
+    {tmp03 <- tempfile(); zap_write(x, tmp03 )                       ; file.size(tmp03)},
+    {tmp08 <- tempfile(); saveRDS(x, tmp08, compress = "gzip")       ; file.size(tmp08)},
+    {tmp10 <- tempfile(); saveRDS(x, tmp10, compress = "zstd")       ; file.size(tmp10)},
+    {tmp11 <- tempfile(); saveRDS(x, tmp11, compress = "xz")         ; file.size(tmp11)}
+  )
+  
+  N <- file.size(tmp01)
+  
+  res <- bench::mark(
+    `readRDS(compress=FALSE)` = readRDS(file = tmp01),
+    `qs2::qs_read()`          = qs2::qs_read(tmp07, nthreads = 1),
+    `zap_read()`              = zap_read(tmp03),
+    `readRDS(gzip)`           = readRDS(tmp08),
+    `readRDS(zstd)`           = readRDS(tmp10),
+    `readRDS(xz)`             = readRDS(tmp11),
+    check = FALSE
+  )
+  
+  
+  
+  res <- res[, 1:4]
+  res$size <- sizes
+  res 
+}
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+plot_benchmark <- function(res, nm = "plot_benchmark", sub = NULL, compress = TRUE) {
+  
+  df <- res %>%
+    mutate(cratio = size[1] / size) %>%
+    mutate(speed = size[1] * `itr/sec` / 1024 / 1024) %>%
+    mutate(
+      name = as.character(expression)
+    )
+  
+  p <- ggplot(df) +
+    geom_point(aes(cratio, speed, color = as.factor(name))) + 
+    ggrepel::geom_text_repel(aes(cratio, speed, label = name, color = as.factor(name)),
+                             size = 4, max.overlaps = 20) +
+    theme_bw(15) +
+    theme(legend.position = 'none') + 
+    labs(
+      x = "Compression Ratio\n(bigger is better)",
+      y = ifelse(compress, 
+                 "Compression Speed (MB/s)\n(bigger is better)",
+                 "Decompression Speed (MB/s)\n(bigger is better)"),
+      title = nm,
+      subtitle = sub
+    ) + 
+    # scale_y_log10() + 
+    expand_limits(y = 0) +
+    scale_x_continuous(breaks = scales::pretty_breaks())
+  
+  date    <- as.character(Sys.Date())
+  dirname <- here::here("working/benchmark", date)
+  dir.create(dirname, showWarnings = FALSE, recursive = TRUE)
+  filename <- sprintf("%s/%s.pdf", dirname, nm)
+  ggsave(filename, plot = p, width = 9, height = 6)
+  
+  
+  dirname <- here::here("working/benchmark", date, "ZZZ")
+  dir.create(dirname, showWarnings = FALSE, recursive = TRUE)
+  filename <- sprintf("%s/%s.csv", dirname, nm)
+  write.csv(res, filename, row.names = FALSE, quote = FALSE)
+  
+  
+  p
+}
+```
+
+
+
+### Example: Writing `diamonds` to file
+
+The graph below compares different serialization/compression 
+options in R.
+
+The x-axis is *compression ratio* - the size of the compressed data compared
+to the size of the original.  Bigger compression ratios are better.  Both `zap`
+and `xz` are able to highly compress this data.
+
+The y-axis is *compression speed* - how quickly is the data compressed and written to file.
+Saving with `zap` is comparable in speed to saving the data uncompressed, and is 
+much faster than `xz`.
+
+```{r eval=FALSE}
+zap_write(diamonds, dst = "diamonds.zap", compress = "zstd")
+```
+
+
+```{r echo = FALSE}
+library(ggplot2)
+
+res <- benchmark(diamonds)
+plot_benchmark(res, "Writing 'diamonds' to file")
+
+res$`itr/sec` <- round(res$`itr/sec`, 1)
+
+knitr::kable(res, caption = "Writing 'diamonds' to file")
+```
+
+
+### Example: Reading `diamonds` from file
+
+
+```{r eval=FALSE}
+zap_read("diamonds.zap")
+```
+
+```{r echo = FALSE}
+res <- unbenchmark(diamonds)
+plot_benchmark(res, "Reading 'diamonds' from file", compress = FALSE)
+
+res$`itr/sec` <- round(res$`itr/sec`, 1)
+
+knitr::kable(res, caption = "Reading 'diamonds' from file")
+```
+
+
+
+
+
+# `zap` Technical details
+
+### R object structure
+
+R objects are collections of SEXP elements. For the purposes of explaining 
+this package consider SEXP objects to be broken up into 3 classes.
+
+1. Atomic vectors e.g. integers, strings
+2. Containers e.g. lists, environments, closures, data.frames
+3. Everything else e.g. bytecode, dots
+
+**Atomic Vectors** are the core things users would consider *data* in R. Collections
+of integers, floating point numbers, logical values are what we actually 
+want to compute with.
+
+**Containers** allow R to organise atomic vectors into logical units - e.g.
+a data.frame is a collection of (mostly) atomic vectors. A *list* is a 
+collection of other arbitrary R objects.
+
+**Everything else** encompasses all the other details of R the language that 
+don't need to be considered often by the user. E.g. the compiled bytecode
+representation of a function, the actual `...` object used in function calls.
+
+### Serializing R objects
+
+Both `zap` and R serialize objects the same way
+
+* walk along each object
+* serialize the atomic vectors it contains
+* serialize its attributes
+* for any nested containers within the object, recurse into them and serialize their contents
+
+### Compressing R objects
+
+Using R's built-in serialization, raw bytes are compressed using entropy coders 
+such as `gzip`, `xz` and `zstd`.
+
+These compressors look for redundancies/patterns and calculate optimal 
+ways of using a smaller number of bits to represent common structures in the data.
+
+Where `zap` differs is that it includes an extra layer of data-dependent *transformations* 
+prior to compression.
+
+
+### `zap` includes lightweight transforms for improving compression
+
+Using the custom serialization mechanism in `zap`, contextual information 
+about bytes is known as part of the process e.g. when serializing an integer
+vector, we know that each set of 4 bytes is a 32-bit signed integer represented 
+in twos-complement form.
+
+Knowing the type of data that is in the bytes allows us to do some 
+fast, low-memory transformations on the bytes which will:
+
+* losslessly reduce the number of bits required to represent each byte
+* make the data much more amenable to compression by the standard compressors
+
+The following sections give a high-level overview of the transformations.  To 
+find out more details, the interested reader is directed to the C source code
+to read the implementation.
+
+Note: these transformations were arrived at after some trial and error.  They are,
+by no means, the final answer to the best transformations to use.  See the `Future work`
+section below for some ideas on how this package might be extended/improved.
+
+# `zap` Transformations
+
+
+## Logical transformation
+
+Logical data may be `packed`:
+
+1. Take all the lowest bits of each logical value (this is the only bit which indicates
+  if the value is TRUE or FALSE). Create a bitstream with 1-bit for each value.
+2. Encode the locations of `NA` values in an auxilliary bitstream (1-bit for 
+   each value).
+  
+Each logical was originally stored in 32-bit data type, and is now represented by just 2 bits 
+(one in each bitstream).
+
+## Integer transformations
+
+1. `zzshuf` ZigZag encoding with delta, then byte shuffling
+2. `delta_frame` Frame-of-reference coding of the deltas (difference between consecutive elements)
+
+### Integer: `zzshuf` ZigZag encoding with byte shuffling
+
+1. [ZigZag encoding](https://lemire.me/blog/2022/11/25/making-all-your-integers-positive-with-zigzag-encoding/) to recode integers without a sign bit
+2. Take the difference between consecutive numbers.
+3. Shuffle the bytes within the vector such that it is more likely zeros
+   will be next to each other.
+    * Each integer is 4 bytes i.e ABCD, ABCD, ABCD, ...
+    * Reorder bytes to:  AAA.., BBB..., CCC..., DDD...
+
+### Integer: `delta_frame` Frame-of-reference coding of deltas
+
+[General overview of frame-of-reference coding](https://lemire.me/blog/2012/02/08/effective-compression-using-frame-of-reference-and-delta-coding/)
+
+1. Take the difference between consecutive numbers
+2. If the largest difference is >= 4096, use `zzshuf` instead
+3. Find the number of bits to encode the largest difference
+4. Encode all differences with this number of bits
+5. Pack these low-bit representations of differences into 64-bit integers
+6. Encode the locations of `NA` values in an auxilliary bitstream (1-bit for 
+   each number).
+
+## Factor transformation
+
+Factors may be `packed`:
+
+1. The number of levels of a factor is known without having to calculate anything
+2. If number of levels >= 4096, just encode factor as an integer using `zzshuf`
+3. Find the number of bits to encode the maximum level
+4. Encode all factors with this number of bits
+5. Pack these bits into 64-bit integers
+6. NA values are encoded as zero  (since zero is not a valid factor level)
+
+
+## Character transformation
+
+Encode a character vector as a `mega` string by writing out:
+
+1. The total length of all strings
+2. The concatenation of all the nul-terminated strings (where length is 
+   encoded implicitly by the position of the nul-bytes)
+3. Encode the locations of `NA` values in an auxilliary bitstream (1-bit for 
+   each string).
+
+This approach avoids encoding a separate length for each individual character string.
+
+## Floating point transformation
+
+Floating point compression is notoriously difficult, and the best transformation
+to apply is heavily dependent on the characteristics of the data.
+
+1. `shuffle` Byte shuffle 
+2. `delta_shuffle` Delta and byte shuffle
+3. `alp` Adaptive Lossles floating Point compression
+
+### Floating point: `shuffle` byte shuffle
+
+1. Given each double is an 8-byte sequence: ABCDEFGH, ABCDEFGH, ...
+2. Reorder the bytes to be: AA..., BB..., CC..., DD..., EE..., FF.., GG..., HH...
+
+### Floating point: `delta_shuffle` delta and byte shuffle
+
+1. Treat every double precision float as an unsigned 64-bit integer
+2. Take the difference between consecutive values
+3. Given each value is an 8-byte sequence: ABCDEFGH, ABCDEFGH, ...
+4. Reorder the bytes to be: AA..., BB..., CC..., DD..., EE..., FF.., GG..., HH...
+
+### Floating point: `alp` Adaptive Lossless floating Point compression
+
+This method is adapted from a *Afroozeh et al* [ALP: Adaptive Lossless floating-Point Compression](https://dl.acm.org/doi/pdf/10.1145/3626717).
+The original [C++ code on github](https://github.com/cwida/ALP) and the 
+[Rust implementation](https://github.com/spiraldb/alp) are available. Note: [the rust version is faster than c](https://spiraldb.com/post/alp-rust-is-faster-than-c)
+
+1. Examine a sample of the values
+2. Determine if these numbers represent floating point numbers with a finite 
+   number of decimal places
+3. If many numbers fail this criteria, then fallback to `shuffle` or
+   `delta_shuffle` technique
+4. Determine powers of 10 to best convert numbers to integer form
+5. Convert numbers to integer form
+6. Apply differencing and byte shuffling
+7. Any individual values which were not successfully encoded are encoded in 
+   an auxillary stream of "patches" to be applied when un-transforming the data.
+   These include `NA`, `NaN`, `Inf` as well as any floating point value not 
+   convertible to an integer.
+
+
+# Future work
+
+Each of the data elements which support transformation (integer, logical, factor, double, 
+character) support up to 256 possible transformations.
+
+There is room here for experimentation, new transformations and heuristics to 
+choose the "optimal" transformation based upon data characteristics.
+
+### Remove need for R's `serialize()`
+
+There are some SEXPs which are still serialized using R's built-in mechanism, 
+and then those raw bytes are inserted into the `zap` output.  It would
+be nice if `zap` managed to handle all SEXPs without resorting to R.
+
+Current SEXPs which use R's serialization mechanism:
+
+* BCODESXP - bytecode representations
+* DOTSXP - representation of the `...` object
+* SPECIALSXP
+* BUILTIN
+* PROMSXP(?)
+* ANYSXP - not seen in real objects?
+* EXTPTRSXP
+* WEAKREFSXP
+* S4SXP
+
+
+### Bitstream 
+
+Current bit packing occurs within unsigned 64-bit integers, and a packed element will
+never cross from one 64-bit integer to the next.
+
+E.g. If it is known that all factor values fit into 10-bit integers, then 6 factor 
+values will be packed into a single 64-bit destination - leaving 4 bits unused.
+
+This packing is inefficient, but was easy to code.  
+
+It would be worth trialling a general purpose packing routine which can pack
+bits compactly at all sizes, with no wastage.
+
+
+### Integer transformations
+
+* Try [StreamVByte](https://github.com/fast-pack/streamvbyte) for integer compression.
+  I did experiment with this early on, and may have discounted it too quickly.
+  Does it offer any speed/compression advantages over simple "delta + shuffle" once
+  we add zstd compression?
+
+
+### Floating point transformation
+
+* Port [Rust version of ALP](https://github.com/spiraldb/alp) to R
+
+
+
+
+
+
+
+
+
