@@ -17,33 +17,37 @@
 
 
 //===========================================================================
-// Pare the R list of options into the 'parse_options' struct
+// Parse the R list of options into the 'opts_t' options struct
 //
-// @param parse_opts_ An R named list of options. Passed in from the user.
+// @param opts_ An R named list of options. Passed in from the user.
 //===========================================================================
 opts_t *parse_options(SEXP opts_) {
   
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Allocate 'opts_t *'
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   opts_t *opts = calloc(1, sizeof(opts_t));
   if (opts == NULL) {
     Rf_error("parse_options(): Could not allocate 'opts_t'");
   }
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Set default options
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   opts->verbosity      = 0;
-  opts->compression    = ZAP_COMP_ZSTD;
   opts->lgl_transform  = ZAP_LGL_PACKED;
   opts->int_transform  = ZAP_INT_DELTAFRAME;
   opts->fct_transform  = ZAP_FCT_PACKED;
   opts->dbl_transform  = ZAP_DBL_ALP;
   opts->str_transform  = ZAP_STR_MEGA;
   
-  opts->dbl_fallback    = 2;
+  opts->dbl_fallback   = ZAP_DBL_SHUF_DELTA;
   
   opts->lgl_threshold =  0;
   opts->int_threshold =  0;
   opts->fct_threshold =  0;
   opts->dbl_threshold =  0;
   opts->str_threshold =  0;
-  
-  opts->zstd_level     = 1; // zstd comp level
   
   
   // Sanity check and extract option names from the named list
@@ -215,10 +219,11 @@ void realloc_buf(ctx_t *ctx, int idx, size_t len) {
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Write from buffer
-// Buffer is assumed to be appropriately sized
+// Read/Write from buffer
 //
-// Write: [LEN] [DATA]
+// When reading, buffer will be resized to hold [LEN] bytes
+//
+// Format: [length] [DATA]
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void write_buf(ctx_t *ctx, int buf_idx, size_t len) {
   write_len(ctx, len);
@@ -228,11 +233,6 @@ void write_buf(ctx_t *ctx, int buf_idx, size_t len) {
   }
 }
 
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Read [LEN] [DATA]
-// Buffer will be resized to hold [LEN] bytes
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 size_t read_buf(ctx_t *ctx, int buf_idx) {
   
   size_t len = read_len(ctx);
@@ -249,10 +249,11 @@ size_t read_buf(ctx_t *ctx, int buf_idx) {
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Write from buffer
-// Buffer is assumed to be appropriately sized
+// Read/Write from ptr 
 //
-// Write: [LEN] [DATA]
+// Caller must ensure that memory has been allocated 
+//
+// Format: [length] [DATA]
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void write_ptr(ctx_t *ctx, void *ptr, size_t len) {
   write_len(ctx, len);
@@ -262,11 +263,6 @@ void write_ptr(ctx_t *ctx, void *ptr, size_t len) {
   }
 }
 
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Read [LEN] [DATA]
-// User must guarantee that *ptr is of the correct size.
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 size_t read_ptr(ctx_t *ctx, void *ptr) {
   
   size_t len = read_len(ctx);
@@ -280,16 +276,12 @@ size_t read_ptr(ctx_t *ctx, void *ptr) {
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Write a single singed int32
+// Read/Write a single signed int32
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void write_int32(ctx_t *ctx, int32_t val) {
   ctx->write(ctx->user_data, &val, sizeof(int32_t));
 }
 
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Read a single signed int32
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int32_t read_int32(ctx_t *ctx) {
   int32_t val = 0;  
   ctx->read(ctx->user_data, &val, sizeof(int32_t));
@@ -299,16 +291,12 @@ int32_t read_int32(ctx_t *ctx) {
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Write a single byte
+// Read/Write a single byte
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void write_uint8(ctx_t *ctx, uint8_t val) {
   ctx->write(ctx->user_data, &val, sizeof(uint8_t));
 }
 
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Read a single byte
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 uint8_t read_uint8(ctx_t *ctx) {
   uint8_t val = 0;  
   ctx->read(ctx->user_data, &val, sizeof(uint8_t));
@@ -317,11 +305,11 @@ uint8_t read_uint8(ctx_t *ctx) {
 
 
 
-
-
-
-
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Buffers are initially sized at 128k each, but can grow
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define INIT_BUFSIZE 128 * 1024
+
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Create a context for reading/writing R objects
@@ -366,7 +354,6 @@ ctx_t *create_serialize_ctx(void *user_data,
                             void    (*write)(void *user_data, void *buf, size_t len),
                             opts_t *opts) {
   ctx_t *ctx     = create_ctx(opts);
-  ctx->mode      = CTX_WRITE;
   ctx->user_data = user_data;
   
   ctx->write = write;
@@ -384,7 +371,6 @@ ctx_t *create_unserialize_ctx(void *user_data,
                               void    (*read)(void *user_data, void *buf, size_t len),
                               opts_t *opts) {
   ctx_t *ctx     = create_ctx(opts);
-  ctx->mode      = CTX_READ;
   ctx->user_data = user_data;
   
   ctx->read  = read;
@@ -414,7 +400,9 @@ void ctx_destroy(ctx_t *ctx) {
 }
 
 
-
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Character strings used for verbose output
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 char *sexp_nms[32] = {
   "NILSXP"	    , //   0	NILSXP	    NULL 
   "SYMSXP"	    , //   1	SYMSXP	    symbols 
@@ -450,6 +438,13 @@ char *sexp_nms[32] = {
   "unused"     
 };
 
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Dump three tallies to screen
+//  - all SEXPs
+//  - ALTREPs
+//  - SEXPs which were handled with R's serialization framework
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void dump_tally(ctx_t *ctx) {
   
   bool has_values = false;

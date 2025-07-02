@@ -32,9 +32,9 @@
 //   0	NILSXP	NULL ------------------------ Yes
 //   1	SYMSXP	symbols --------------------- Yes
 //   2	LISTSXP	pairlists ------------------- Yes                   
-//   3	CLOSXP	closures --------------------
+//   3	CLOSXP	closures -------------------- Yes
 //   4	ENVSXP	environments ---------------- Yes
-//   5	PROMSXP	promises --------------------
+//   5	PROMSXP	promises -------------------- 
 //   6	LANGSXP	language objects ------------ Yes
 //   7	SPECIALSXP	special functions -------
 //   8	BUILTINSXP	builtin functions -------
@@ -57,15 +57,10 @@
 //  25	S4SXP	S4 classes not of simple type - 
 
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// This is the version number which encompasses the "set" of all
-// transformations.  When transformations are added/removed or compatibility
-// is broken, this number should be increasted.
-// This number is stored as the second byte value in the uncompressed
-// data stream
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define ZAP_VERSION 1
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Retrieve the ZAP_VERSION
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SEXP zap_version_(void) {
   return Rf_ScalarInteger(ZAP_VERSION);
 }
@@ -146,7 +141,7 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Keep a tally of the types seen for verbost output
+  // Keep a tally of the types seen (for verbose tally output)
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ctx->tally_sexp[TYPEOF(x_) & 0x1f]++;
   
@@ -235,9 +230,9 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
   
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // NILSXP can't have attributes
-  // If the object was handled by R's serialization mechanism then it 
-  // has its attributes done with there as well.
+  // - NILSXP can't have attributes
+  // - If the object was handled by R's serialization mechanism attributes
+  //   were handled there already
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (possibly_has_attrs) {
     write_attrs(ctx, x_);

@@ -1,52 +1,59 @@
 
 
-
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Version of set of internal transformations
+// Anytime a transformation changes or is added, bump this version by 1
+// This number is written as the second byte of an uncompressed zap stream
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define ZAP_VERSION 1
 
-#define CTX_READ  0
-#define CTX_WRITE 1
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Number of internal buffers to pre-allocate
+// These are the working buffers used during transformation
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define CTX_NBUFS 5
 
-#define ZAP_COMP_NONE    0
-#define ZAP_COMP_ZSTD    1
 
-
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Two special verbosity modes
+//    TALLY outputs a tally at the end of the serialization
+//    TRE   outputs an indented tree of all SEXPs as they are written
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define ZAP_VERB_TALLY 16
 #define ZAP_VERB_TREE  32
 
+
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Atomic methods
+// Transformation methods
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define ZAP_LGL_RAW    0
-#define ZAP_LGL_PACKED 1
+#define ZAP_LGL_RAW        0  // Uncompressed
+#define ZAP_LGL_PACKED     1  // Packed into 2 bitstreams
+
+#define ZAP_INT_RAW        0  // Uncompressed
+#define ZAP_INT_ZZSHUF     1  // ZigZag + Delta + Shuffle
+#define ZAP_INT_DELTAFRAME 2  // delta frame-of-reference
+
+#define ZAP_FCT_RAW        0  // Uncompressed
+#define ZAP_FCT_PACKED     1  // Packed into minimal nbits per element
+
+#define ZAP_DBL_RAW        0  // Uncompressed
+#define ZAP_DBL_SHUF       1  // shuffle bytes
+#define ZAP_DBL_SHUF_DELTA 2  // delta + shuffle bytes
+#define ZAP_DBL_ALP        3  // ALP
+
+#define ZAP_STR_RAW        0  // Uncompressed
+#define ZAP_STR_MEGA       1  // Mega string
 
 
-#define ZAP_INT_RAW        0
-#define ZAP_INT_ZZSHUF     1
-#define ZAP_INT_DELTAFRAME 2
-
-
-#define ZAP_FCT_RAW    0
-#define ZAP_FCT_PACKED 1
-
-
-#define ZAP_DBL_RAW        0
-#define ZAP_DBL_SHUF       1
-#define ZAP_DBL_SHUF_DELTA 2
-#define ZAP_DBL_ALP        3
-
-
-#define ZAP_STR_RAW  0
-#define ZAP_STR_MEGA 1
-
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// All the user specified options
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct {
   
   int verbosity;
-  int compression;
   
   int dbl_fallback;
-  int zstd_level;
   
   int lgl_transform;
   int int_transform;
@@ -59,44 +66,57 @@ typedef struct {
   int fct_threshold;
   int dbl_threshold;
   int str_threshold;
-  
-  
 } opts_t;
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Compression/decompression context
+// zap transformation context
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct {
-  int mode;
-  void *user_data;
   
+  // The temporary storage buffers for transformation
   uint8_t *buf[CTX_NBUFS];
   size_t bufsize[CTX_NBUFS];
   
+  // Storage for environments seen during serialization so that references
+  // can be used
   R_xlen_t Nenv;
   SEXP env_list;
   
+  // user supplied data passed to callbacks
+  // the two primary callbacks used to read/write data
+  void *user_data; 
   void    (*write)     (void *user_data, void *buf, size_t len);
   void    (*read)      (void *user_data, void *buf, size_t len);
   
-  int depth;            // tracking detpth for tree printing
+  // Storage and tracking for verbose output
+  int depth;            // tracking depth for tree printing
   int tally_sexp  [32]; // Vanilla SEXP objects
   int tally_altrep[32]; // ALTREP objects
   int tally_serial[32]; // SEXP types which were serialized by the internal serialization
   
+  // User options
   opts_t *opts;
 } ctx_t;
 
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Creat a serialization context
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ctx_t *create_serialize_ctx(void *user_data, 
                             void    (*write)(void *user_data, void *buf, size_t len),
                             opts_t *opts);
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Create an Unserialization context
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ctx_t *create_unserialize_ctx(void *user_data,
                               void    (*read)(void *user_data, void *buf, size_t len),
                               opts_t *opts);
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Destroy the context and all allocated memory. Release any cached R objects
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void ctx_destroy(ctx_t *ctx);
 
 
@@ -106,13 +126,18 @@ void ctx_destroy(ctx_t *ctx);
 //    - 11,12 once used but no longer
 //    - 26-31
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define RSERIALSXP 31
-#define FACTORSXP  30
+#define RSERIALSXP 31  // Use R's serialization 
+#define FACTORSXP  30  // This is a factor
 
-opts_t *parse_options(SEXP opts_);
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// 
+// Parse list of user options to C struct
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+opts_t *parse_options(SEXP opts_);
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Forward declaration of generic IO
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void prepare_buf(ctx_t *ctx, int idx, size_t len);
 void realloc_buf(ctx_t *ctx, int idx, size_t len);
