@@ -83,7 +83,7 @@ size_t pack_nbits_ptr_ptr(ctx_t *ctx, uint32_t *src, void *dst, size_t N_orig_in
   int i = 0;
   for (; i < (int64_t)N_orig_ints - (n_ints_per_packing - 1); i += n_ints_per_packing) {
     *p = 0;
-    int shift = nbits * (n_ints_per_packing - 1);
+    int shift = (int)nbits * (n_ints_per_packing - 1);
     for (int j = 0; j < n_ints_per_packing; j++) {
       *p |= ((src[i + j] & mask) << shift);
       shift -= nbits;
@@ -93,7 +93,7 @@ size_t pack_nbits_ptr_ptr(ctx_t *ctx, uint32_t *src, void *dst, size_t N_orig_in
   
   if (i < N_orig_ints) {  
     *p = 0;
-    int shift = nbits * (n_ints_per_packing - 1);
+    int shift = (int)nbits * (n_ints_per_packing - 1);
     for (;i < N_orig_ints; i++) {
       *p |= (PACK_TYPE)(src[i] & mask) << shift;
       shift -= nbits;
@@ -116,7 +116,7 @@ void unpack_nbits_ptr_ptr(ctx_t *ctx, void *src, uint32_t *dst, size_t N_orig_in
   
   int i = 0;
   for (; i < (int64_t)N_orig_ints - (n_ints_per_packing - 1); i += n_ints_per_packing) {
-    int shift = nbits * (n_ints_per_packing - 1);
+    int shift = (int)nbits * (n_ints_per_packing - 1);
     for (int j = 0; j < n_ints_per_packing; j++) {
       dst[i + j] = (uint32_t)(*p >> shift) & mask;
       shift -= nbits;
@@ -125,7 +125,7 @@ void unpack_nbits_ptr_ptr(ctx_t *ctx, void *src, uint32_t *dst, size_t N_orig_in
   }
   
   if (i < N_orig_ints) {
-    int shift = nbits * (n_ints_per_packing - 1);
+    int shift = (int)nbits * (n_ints_per_packing - 1);
     for (; i < N_orig_ints; i++) {
       dst[i] = (uint32_t)(*p >> shift) & mask;
       shift -= nbits;

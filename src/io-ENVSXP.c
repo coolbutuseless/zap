@@ -150,7 +150,7 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   // If we've reached the limit of current env cache, then expand the cache
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (ctx->Nenv >= Rf_xlength(env_list_)) {
-    SEXP expanded_env_list_ = PROTECT(Rf_lengthgets(env_list_, 2 * Rf_xlength(env_list_)));
+    SEXP expanded_env_list_ = PROTECT(Rf_lengthgets(env_list_, 2 * Rf_length(env_list_)));
     SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, expanded_env_list_);
     UNPROTECT(1);
   }
@@ -257,7 +257,7 @@ SEXP read_ENVSXP(ctx_t *ctx) {
   // If we've reached the limit of current env cache, then expand the cache
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (ctx->Nenv >= Rf_xlength(env_list_)) {
-    SEXP expanded_env_list_ = PROTECT(Rf_lengthgets(env_list_, 2 * Rf_xlength(env_list_)));
+    SEXP expanded_env_list_ = PROTECT(Rf_lengthgets(env_list_, 2 * Rf_length(env_list_)));
     SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, expanded_env_list_);
     UNPROTECT(1);
   }
