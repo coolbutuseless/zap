@@ -73,8 +73,8 @@ void write_LGLSXP_packed(ctx_t *ctx, SEXP x_) {
   // Header
   write_uint8(ctx, LGLSXP);
   write_uint8(ctx, ZAP_LGL_PACKED);
-  R_xlen_t len = Rf_xlength(x_);
-  write_len(ctx, (size_t)len);
+  size_t len = (size_t)Rf_xlength(x_);
+  write_len(ctx, len);
   
   // Early return
   if (len == 0) return;
@@ -107,13 +107,13 @@ void write_LGLSXP_packed(ctx_t *ctx, SEXP x_) {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SEXP read_LGLSXP_packed(ctx_t *ctx) {
   
-  R_xlen_t len = (R_xlen_t)read_len(ctx);
+  size_t len = read_len(ctx);
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Allocate an R logical vector.
   // This is initialised to all 0 by default
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  SEXP x_ = PROTECT(Rf_allocVector(LGLSXP, len)); 
+  SEXP x_ = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)len)); 
   if (len == 0) {
     UNPROTECT(1);
     return x_;
@@ -122,15 +122,16 @@ SEXP read_LGLSXP_packed(ctx_t *ctx) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Extract T/F values from bitstream
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  memset(LOGICAL(x_), 0, len * sizeof(int32_t));
   read_buf(ctx, BUF_PACKED);
-  unpack_lgl(ctx, BUF_PACKED, x_, (size_t)len);
+  unpack_lgl(ctx, BUF_PACKED, x_, len);
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Set NA values using the auxilliary NA bistream
   // Note: NAs for logical is encoded the same as NA for integer
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   read_buf(ctx, BUF_PACKED);
-  unpack_na_int(ctx, BUF_PACKED, x_, (size_t)len);
+  unpack_na_int(ctx, BUF_PACKED, x_, len);
   
   
   UNPROTECT(1);

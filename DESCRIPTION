@@ -1,7 +1,7 @@
 Package: zap
 Type: Package
 Title: Fast Object Serialization with High Compression
-Version: 0.1.0.9000
+Version: 0.1.0.9001
 Authors@R: c(
     person("Mike", "Cheng", role = c("aut", "cre", 'cph'), email = "mikefc@coolbutuseless.com")
     )
