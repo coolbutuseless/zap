@@ -334,11 +334,19 @@ ctx_t *create_ctx(opts_t *opts) {
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // allocate space to store environments
+  // allocate space to store caches
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ctx->cache = PROTECT(Rf_allocVector(VECSXP, 2));
+  R_PreserveObject(ctx->cache);
+  UNPROTECT(1);
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Setup a cache of environment
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ctx->Nenv = 0;
-  ctx->env_list = Rf_allocVector(VECSXP, 1024);
-  R_PreserveObject(ctx->env_list);
+  SEXP env_cache_ = PROTECT(Rf_allocVector(VECSXP, 4));
+  SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, env_cache_);
+  UNPROTECT(1);
   
   
   return ctx;
@@ -395,7 +403,7 @@ void ctx_destroy(ctx_t *ctx) {
     free(ctx->buf[i]);
   }
   
-  R_ReleaseObject(ctx->env_list); // R list of referenced environments
+  R_ReleaseObject(ctx->cache); // R object cache
   free(ctx);
 }
 

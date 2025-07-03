@@ -126,8 +126,9 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   // Is this a reference to an existing environment?
   // Iterate over all the saved environments so far and see if there's a match!
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  for (R_xlen_t env_idx = 0; env_idx < Rf_xlength(ctx->env_list); env_idx++) {
-    if (env_ == VECTOR_ELT(ctx->env_list, env_idx)) {
+  SEXP env_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP);
+  for (R_xlen_t env_idx = 0; env_idx < Rf_xlength(env_list_); env_idx++) {
+    if (env_ == VECTOR_ELT(env_list_, env_idx)) {
       write_uint8(ctx, ENV_REFERENCE);
       write_len(ctx, (uint64_t)env_idx);
       return;
@@ -142,13 +143,17 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   // Store reference to this environment so we can see if any future
   // environments are an exact match
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  SET_VECTOR_ELT(ctx->env_list, ctx->Nenv, env_);
+  SET_VECTOR_ELT(env_list_, ctx->Nenv, env_);
   ctx->Nenv++;
-  if (ctx->Nenv >= Rf_xlength(ctx->env_list)) {
-    // ToDo: this should probably auto-expand rather than be a fixed size
-    Rf_error("Exceeded maximum number of cached environments: %li", (long)ctx->Nenv);
-  }
   
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // If we've reached the limit of current env cache, then expand the cache
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (ctx->Nenv >= Rf_xlength(env_list_)) {
+    SEXP expanded_env_list_ = PROTECT(Rf_lengthgets(env_list_, 2 * Rf_xlength(env_list_)));
+    SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, expanded_env_list_);
+    UNPROTECT(1);
+  }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // This is a 'full' Environment
@@ -216,7 +221,8 @@ SEXP read_ENVSXP(ctx_t *ctx) {
     return env_;
   } else if (env_type == ENV_REFERENCE) {
     R_xlen_t env_idx = (R_xlen_t)read_len(ctx);
-    return VECTOR_ELT(ctx->env_list, env_idx);
+    SEXP env_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP);
+    return VECTOR_ELT(env_list_, env_idx);
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -242,8 +248,19 @@ SEXP read_ENVSXP(ctx_t *ctx) {
   // Remember this environment for  references
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   SEXP env_    = PROTECT(R_NewEnv(parent_, true, 29)); nprotect++;
-  SET_VECTOR_ELT(ctx->env_list, ctx->Nenv, env_);
+  
+  SEXP env_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP);
+  SET_VECTOR_ELT(env_list_, ctx->Nenv, env_);
   ctx->Nenv++;
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // If we've reached the limit of current env cache, then expand the cache
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (ctx->Nenv >= Rf_xlength(env_list_)) {
+    SEXP expanded_env_list_ = PROTECT(Rf_lengthgets(env_list_, 2 * Rf_xlength(env_list_)));
+    SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, expanded_env_list_);
+    UNPROTECT(1);
+  }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Read the names for objects in this environment
