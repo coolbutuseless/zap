@@ -47,6 +47,13 @@
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Cache contents
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#define ZAP_CACHE_ENVSXP  0
+#define ZAP_CACHE_VECSXP  1
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // All the user specified options
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct {
@@ -80,9 +87,9 @@ typedef struct {
   
   // Storage for environments seen during serialization so that references
   // can be used
+  SEXP cache;
   R_xlen_t Nenv;
-  SEXP env_list;
-  
+
   // user supplied data passed to callbacks
   // the two primary callbacks used to read/write data
   void *user_data; 

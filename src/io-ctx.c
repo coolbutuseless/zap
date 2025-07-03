@@ -313,13 +313,10 @@ uint8_t read_uint8(ctx_t *ctx) {
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Create a context for reading/writing R objects
-// @param loc_ filename.  But in future could also be R connetion object, 
-//        of maybe "NULL" to indicate
+// @param opts C structure parsed from the users R list
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ctx_t *create_ctx(opts_t *opts) {
   ctx_t *ctx = calloc(1, sizeof(ctx_t));
-  
-  // Parse any extra options from the user
   ctx->opts = opts;
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -334,11 +331,24 @@ ctx_t *create_ctx(opts_t *opts) {
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // allocate space to store environments
+  // allocate space to store caches
+  //  - Currently this is just a cache to store ENVSXP objects so that 
+  //    environments are only serialized once
+  //  - Possibility to extend this to VECSXP objects so that self-referential
+  //    lists can be more effectively serialized.
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ctx->cache = PROTECT(Rf_allocVector(VECSXP, 2));
+  R_PreserveObject(ctx->cache);
+  UNPROTECT(1);
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Setup a cache of environments
+  // Initially length=4, but this will get dynamically expanded as necessary
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ctx->Nenv = 0;
-  ctx->env_list = Rf_allocVector(VECSXP, 1024);
-  R_PreserveObject(ctx->env_list);
+  SEXP env_cache_ = PROTECT(Rf_allocVector(VECSXP, 4));
+  SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, env_cache_);
+  UNPROTECT(1);
   
   
   return ctx;
@@ -353,10 +363,10 @@ ctx_t *create_ctx(opts_t *opts) {
 ctx_t *create_serialize_ctx(void *user_data, 
                             void    (*write)(void *user_data, void *buf, size_t len),
                             opts_t *opts) {
-  ctx_t *ctx     = create_ctx(opts);
-  ctx->user_data = user_data;
   
-  ctx->write = write;
+  ctx_t *ctx     = create_ctx(opts);
+  ctx->user_data = user_data; // The user's data passed to the 'write()' callback
+  ctx->write     = write;     // The write callback
   
   return ctx;
 }
@@ -370,10 +380,10 @@ ctx_t *create_serialize_ctx(void *user_data,
 ctx_t *create_unserialize_ctx(void *user_data,
                               void    (*read)(void *user_data, void *buf, size_t len),
                               opts_t *opts) {
-  ctx_t *ctx     = create_ctx(opts);
-  ctx->user_data = user_data;
   
-  ctx->read  = read;
+  ctx_t *ctx     = create_ctx(opts);
+  ctx->user_data = user_data;  // The user's data passed to the 'read()' callback
+  ctx->read      = read;       // The read() callback
   
   return ctx;
 }
@@ -395,7 +405,7 @@ void ctx_destroy(ctx_t *ctx) {
     free(ctx->buf[i]);
   }
   
-  R_ReleaseObject(ctx->env_list); // R list of referenced environments
+  R_ReleaseObject(ctx->cache); // R object cache
   free(ctx);
 }
 
