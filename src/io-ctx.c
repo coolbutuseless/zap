@@ -409,6 +409,16 @@ void ctx_destroy(ctx_t *ctx) {
     free(ctx->buf[i]);
   }
   
+  if (ctx->opts->verbosity == 16) {
+    Rprintf("Env Hashmap ------------------\nTotal Items = %i\n", 
+            (int)ctx->env_hashmap->total_items);
+    for (int i = 0; i < ctx->env_hashmap->nbuckets; i++) {
+      bucket_t bucket = ctx->env_hashmap->bucket[i];
+      if (bucket.nitems > 0) {
+        Rprintf("[%3i] %i\n", i, (int)bucket.nitems);
+      }
+    }
+  }
   mph_destroy(ctx->env_hashmap);
   
   R_ReleaseObject(ctx->cache); // R object cache
