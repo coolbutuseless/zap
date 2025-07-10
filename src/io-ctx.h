@@ -92,7 +92,7 @@ typedef struct {
   SEXP cache;
   
   R_xlen_t Nenv;
-  mph_t *env_hashmap;
+  mph_t *envsxp_hashmap;
 
   R_xlen_t Nvecsxp;
   mph_t *vecsxp_hashmap;

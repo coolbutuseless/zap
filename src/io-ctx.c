@@ -363,9 +363,9 @@ ctx_t *create_ctx(opts_t *opts) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Hashmap for ENVSXP
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ctx->env_hashmap = mph_init(256);
-  if (ctx->env_hashmap == NULL) {
-    Rf_error("create_ctx(): Failed to create 'env_hashmap'");
+  ctx->envsxp_hashmap = mph_init(256);
+  if (ctx->envsxp_hashmap == NULL) {
+    Rf_error("create_ctx(): Failed to create 'envsxp_hashmap'");
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -432,15 +432,16 @@ void ctx_destroy(ctx_t *ctx) {
   
   if (ctx->opts->verbosity == 16) {
     Rprintf("Env Hashmap ------------------\nTotal Items = %i\n", 
-            (int)ctx->env_hashmap->total_items);
-    for (int i = 0; i < ctx->env_hashmap->nbuckets; i++) {
-      bucket_t bucket = ctx->env_hashmap->bucket[i];
+            (int)ctx->envsxp_hashmap->total_items);
+    for (int i = 0; i < ctx->envsxp_hashmap->nbuckets; i++) {
+      bucket_t bucket = ctx->envsxp_hashmap->bucket[i];
       if (bucket.nitems > 0) {
         Rprintf("[%3i] %i\n", i, (int)bucket.nitems);
       }
     }
   }
-  mph_destroy(ctx->env_hashmap);
+  mph_destroy(ctx->envsxp_hashmap);
+  mph_destroy(ctx->vecsxp_hashmap);
   
   R_ReleaseObject(ctx->cache); // R object cache
   free(ctx);
