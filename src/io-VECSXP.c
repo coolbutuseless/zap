@@ -37,7 +37,7 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
   // Has this VECSXP been seen in the hashmap cache?
   // If so, just return an VECSXP reference
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#ifdef USE_CACHE
+  if (ctx->opts->vec_transform == ZAP_VEC_REF) {
     int hash_idx = mph_lookup(ctx->vecsxp_hashmap, (uint8_t *)&x_, 8);
     if (hash_idx >= 0) {
       // Found the VECSXP in the cache
@@ -55,14 +55,10 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
     }
     
     ctx->Nvecsxp++;
-    
-    write_uint8(ctx, VECSXP);
-    write_uint8(ctx, VECSXP_RAW);
-#else
-    write_uint8(ctx, VECSXP);
-#endif 
+  }
   
-
+  write_uint8(ctx, VECSXP);
+  write_uint8(ctx, VECSXP_RAW);
   R_xlen_t len = Rf_xlength(x_);
   write_len(ctx, (uint64_t)len);
   
@@ -77,35 +73,36 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
 // Read a standard R list
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SEXP read_VECSXP(ctx_t *ctx) {
-  
-#ifdef USE_CACHE
   int type = read_uint8(ctx);
-  if (type == VECSXP_REFERENCE) {
-    uint64_t hash_idx = (R_xlen_t)read_len(ctx);
-    SEXP vecsxp_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP);
-    return VECTOR_ELT(vecsxp_list_, hash_idx);
-  }
-#endif
   
+  if (type == VECSXP_REFERENCE) {
+    if (ctx->opts->vec_transform == ZAP_VEC_REF) {    
+      uint64_t hash_idx = (R_xlen_t)read_len(ctx);
+      SEXP vecsxp_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP);
+      return VECTOR_ELT(vecsxp_list_, hash_idx);
+    } else {
+      Rf_error("read_VECSXP(): Can't unpack REF here yet");
+    }
+  }
+
   
   R_xlen_t len = (R_xlen_t)read_len(ctx);
   SEXP obj_ = PROTECT(Rf_allocVector(VECSXP, len)); 
   
-  
-#ifdef USE_CACHE
-  SEXP vecsxp_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP);
-  SET_VECTOR_ELT(vecsxp_list_, ctx->Nvecsxp, obj_);
-  ctx->Nvecsxp++;
-  
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // If we've reached the limit of current cache, then expand the cache
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (ctx->Nvecsxp >= Rf_xlength(vecsxp_list_)) {
-    SEXP expanded_vecsxp_list_ = PROTECT(Rf_lengthgets(vecsxp_list_, 2 * Rf_length(vecsxp_list_)));
-    SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP, expanded_vecsxp_list_);
-    UNPROTECT(1);
+  if (ctx->opts->vec_transform == ZAP_VEC_REF) {
+    SEXP vecsxp_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP);
+    SET_VECTOR_ELT(vecsxp_list_, ctx->Nvecsxp, obj_);
+    ctx->Nvecsxp++;
+    
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // If we've reached the limit of current cache, then expand the cache
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if (ctx->Nvecsxp >= Rf_xlength(vecsxp_list_)) {
+      SEXP expanded_vecsxp_list_ = PROTECT(Rf_lengthgets(vecsxp_list_, 2 * Rf_length(vecsxp_list_)));
+      SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP, expanded_vecsxp_list_);
+      UNPROTECT(1);
+    }
   }
-#endif
   
   for (R_xlen_t i = 0; i < len; i++) {
     SEXP el_ = PROTECT(read_sexp(ctx));
