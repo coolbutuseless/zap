@@ -1,4 +1,6 @@
 
+// Hashmap
+#include "mph.h"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Version of set of internal transformations
@@ -89,6 +91,7 @@ typedef struct {
   // can be used
   SEXP cache;
   R_xlen_t Nenv;
+  mph_t *env_hashmap;
 
   // user supplied data passed to callbacks
   // the two primary callbacks used to read/write data
