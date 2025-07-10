@@ -350,9 +350,30 @@ ctx_t *create_ctx(opts_t *opts) {
   SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, env_cache_);
   UNPROTECT(1);
   
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Setup a cache of environments
+  // Initially length=4, but this will get dynamically expanded as necessary
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ctx->Nvecsxp = 0;
+  SEXP vecsxp_cache_ = PROTECT(Rf_allocVector(VECSXP, 4));
+  SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP, vecsxp_cache_);
+  UNPROTECT(1);
+  
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Hashmap for ENVSXP
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ctx->env_hashmap = mph_init(256);
   if (ctx->env_hashmap == NULL) {
     Rf_error("create_ctx(): Failed to create 'env_hashmap'");
+  }
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Hashmap for VECSXP
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ctx->vecsxp_hashmap = mph_init(256);
+  if (ctx->vecsxp_hashmap == NULL) {
+    Rf_error("create_ctx(): Failed to create 'vecsxp_hashmap'");
   }
   
   return ctx;

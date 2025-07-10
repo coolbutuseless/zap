@@ -90,9 +90,13 @@ typedef struct {
   // Storage for environments seen during serialization so that references
   // can be used
   SEXP cache;
+  
   R_xlen_t Nenv;
   mph_t *env_hashmap;
 
+  R_xlen_t Nvecsxp;
+  mph_t *vecsxp_hashmap;
+  
   // user supplied data passed to callbacks
   // the two primary callbacks used to read/write data
   void *user_data; 
