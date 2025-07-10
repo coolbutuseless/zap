@@ -123,16 +123,15 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Is this a reference to an existing environment?
-  // Iterate over all the saved environments so far and see if there's a match!
+  // Has this environment been seen in the hashmap cache?
+  // If so, just return an environment reference
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  SEXP env_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP);
-  for (R_xlen_t env_idx = 0; env_idx < Rf_xlength(env_list_); env_idx++) {
-    if (env_ == VECTOR_ELT(env_list_, env_idx)) {
-      write_uint8(ctx, ENV_REFERENCE);
-      write_len(ctx, (uint64_t)env_idx);
-      return;
-    }
+  int hash_idx = mph_lookup(ctx->env_hashmap, (uint8_t *)&env_, 8);
+  if (hash_idx >= 0) {
+    // Found the environment in the cache
+    write_uint8(ctx, ENV_REFERENCE);
+    write_len(ctx, (uint64_t)hash_idx);
+    return;
   }
 
   
@@ -143,17 +142,11 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   // Store reference to this environment so we can see if any future
   // environments are an exact match
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  SET_VECTOR_ELT(env_list_, ctx->Nenv, env_);
-  ctx->Nenv++;
-  
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // If we've reached the limit of current env cache, then expand the cache
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (ctx->Nenv >= Rf_xlength(env_list_)) {
-    SEXP expanded_env_list_ = PROTECT(Rf_lengthgets(env_list_, 2 * Rf_length(env_list_)));
-    SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, expanded_env_list_);
-    UNPROTECT(1);
+  hash_idx = mph_add(ctx->env_hashmap, (uint8_t *)&env_, 8);
+  if (hash_idx != ctx->Nenv) {
+    Rf_error("write_ENVSXP(): Hashmap synchronization error %i != %i", (int)hash_idx, (int)ctx->Nenv);
   }
+  ctx->Nenv++;
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // This is a 'full' Environment
