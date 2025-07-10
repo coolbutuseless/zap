@@ -350,6 +350,10 @@ ctx_t *create_ctx(opts_t *opts) {
   SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, env_cache_);
   UNPROTECT(1);
   
+  ctx->env_hashmap = mph_init(256);
+  if (ctx->env_hashmap == NULL) {
+    Rf_error("create_ctx(): Failed to create 'env_hashmap'");
+  }
   
   return ctx;
 }
@@ -404,6 +408,18 @@ void ctx_destroy(ctx_t *ctx) {
   for (int i = 0; i < CTX_NBUFS; i++) {
     free(ctx->buf[i]);
   }
+  
+  if (ctx->opts->verbosity == 16) {
+    Rprintf("Env Hashmap ------------------\nTotal Items = %i\n", 
+            (int)ctx->env_hashmap->total_items);
+    for (int i = 0; i < ctx->env_hashmap->nbuckets; i++) {
+      bucket_t bucket = ctx->env_hashmap->bucket[i];
+      if (bucket.nitems > 0) {
+        Rprintf("[%3i] %i\n", i, (int)bucket.nitems);
+      }
+    }
+  }
+  mph_destroy(ctx->env_hashmap);
   
   R_ReleaseObject(ctx->cache); // R object cache
   free(ctx);
