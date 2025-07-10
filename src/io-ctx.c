@@ -40,6 +40,7 @@ opts_t *parse_options(SEXP opts_) {
   opts->fct_transform  = ZAP_FCT_PACKED;
   opts->dbl_transform  = ZAP_DBL_ALP;
   opts->str_transform  = ZAP_STR_MEGA;
+  opts->vec_transform  = ZAP_VEC_RAW;
   
   opts->dbl_fallback   = ZAP_DBL_SHUF_DELTA;
   
@@ -130,6 +131,17 @@ opts_t *parse_options(SEXP opts_) {
       } else {
         Rf_warning("Option not understood: dbl = '%s'. Using 'alp'", val);
         opts->dbl_transform = ZAP_DBL_ALP;
+      }
+      
+    } else if (strcmp(opt_name, "list") == 0) {
+      const char *val = CHAR(STRING_ELT(val_, 0));
+      if (strcmp(val, "raw") == 0) {
+        opts->vec_transform = ZAP_VEC_RAW;
+      } else if (strcmp(val, "reference") == 0) {
+        opts->vec_transform = ZAP_VEC_REF;
+      } else {
+        Rf_warning("Option not understood: list = '%s'. Using 'raw'", val);
+        opts->vec_transform = ZAP_VEC_RAW;
       }
       
     } else if (strcmp(opt_name, "dbl_fallback") == 0) {

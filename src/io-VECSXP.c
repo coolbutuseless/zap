@@ -20,7 +20,7 @@
 #define VECSXP_REFERENCE 1
 
 
-#define USE_CACHE 1
+// #define USE_CACHE 1
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Write a stnadard R list

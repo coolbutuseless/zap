@@ -47,6 +47,8 @@
 #define ZAP_STR_RAW        0  // Uncompressed
 #define ZAP_STR_MEGA       1  // Mega string
 
+#define ZAP_VEC_RAW        0
+#define ZAP_VEC_REF        1
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Cache contents
@@ -69,6 +71,7 @@ typedef struct {
   int fct_transform;
   int dbl_transform;
   int str_transform;
+  int vec_transform;
   
   int lgl_threshold;
   int int_threshold;
