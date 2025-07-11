@@ -260,7 +260,7 @@ SEXP read_sexp(ctx_t *ctx) {
   // special handling for this particular object without having
   // to insert an extra control byte in the stream.
   // E.g. see ENVSXP handling for repeated references
-  switch(type) {  
+  switch(type & 0x1f) {  
   case NILSXP:
     obj_ = PROTECT(R_NilValue);
     possibly_has_attrs = false;
@@ -287,7 +287,7 @@ SEXP read_sexp(ctx_t *ctx) {
     obj_ = PROTECT(read_STRSXP(ctx));
     break;
   case VECSXP:
-    obj_ = PROTECT(read_VECSXP(ctx));
+    obj_ = PROTECT(read_VECSXP(ctx, type));
     break;
   case LISTSXP: // pairlist
     obj_ = PROTECT(read_LISTSXP(ctx));

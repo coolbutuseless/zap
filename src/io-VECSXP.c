@@ -37,8 +37,7 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
     int hash_idx = mph_lookup(ctx->vecsxp_hashmap, (uint8_t *)&x_, 8);
     if (hash_idx >= 0) {
       // Found the VECSXP in the cache
-      write_uint8(ctx, VECSXP);
-      write_uint8(ctx, ZAP_VEC_REF);
+      write_uint8(ctx, VECSXP | 0x80); // set top bit to indicate reference 
       write_len(ctx, (uint64_t)hash_idx);
       return;
     }
@@ -54,7 +53,6 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
   }
   
   write_uint8(ctx, VECSXP);
-  write_uint8(ctx, ZAP_VEC_RAW);
   R_xlen_t len = Rf_xlength(x_);
   write_len(ctx, (uint64_t)len);
   
@@ -68,10 +66,10 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Read a standard R list
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-SEXP read_VECSXP(ctx_t *ctx) {
-  int type = read_uint8(ctx);
+SEXP read_VECSXP(ctx_t *ctx, uint8_t type) {
   
-  if (type == ZAP_VEC_REF) {
+  if (type & 0x80) {
+    // If top bit is set, then this is a reference
     if (ctx->opts->vec_transform == ZAP_VEC_REF) {    
       uint64_t hash_idx = (R_xlen_t)read_len(ctx);
       SEXP vecsxp_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP);
