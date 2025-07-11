@@ -16,10 +16,6 @@
 #include "io-VECSXP.h"
 
 
-#define VECSXP_RAW       0
-#define VECSXP_REFERENCE 1
-
-
 // #define USE_CACHE 1
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,7 +38,7 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
     if (hash_idx >= 0) {
       // Found the VECSXP in the cache
       write_uint8(ctx, VECSXP);
-      write_uint8(ctx, VECSXP_REFERENCE);
+      write_uint8(ctx, ZAP_VEC_REF);
       write_len(ctx, (uint64_t)hash_idx);
       return;
     }
@@ -58,7 +54,7 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
   }
   
   write_uint8(ctx, VECSXP);
-  write_uint8(ctx, VECSXP_RAW);
+  write_uint8(ctx, ZAP_VEC_RAW);
   R_xlen_t len = Rf_xlength(x_);
   write_len(ctx, (uint64_t)len);
   
@@ -75,13 +71,13 @@ void write_VECSXP(ctx_t *ctx, SEXP x_) {
 SEXP read_VECSXP(ctx_t *ctx) {
   int type = read_uint8(ctx);
   
-  if (type == VECSXP_REFERENCE) {
+  if (type == ZAP_VEC_REF) {
     if (ctx->opts->vec_transform == ZAP_VEC_REF) {    
       uint64_t hash_idx = (R_xlen_t)read_len(ctx);
       SEXP vecsxp_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP);
       return VECTOR_ELT(vecsxp_list_, hash_idx);
     } else {
-      Rf_error("read_VECSXP(): Can't unpack REF here yet");
+      Rf_error("read_VECSXP(): Unexpected VECSXP_REFERENCE");
     }
   }
 
