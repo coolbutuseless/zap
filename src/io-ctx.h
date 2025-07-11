@@ -12,8 +12,9 @@
 // Version 2
 //   - v0.1.1 2025-07-11
 //   - add 2 extra flag bytes to header
-//   - flag1 bit0 is used to indicate if the encoded stream uses VECSXP 
-//     references
+//   - flag1 
+//      - bit0 is used to indicate if the encoded stream uses VECSXP 
+//        references
 //   - flag2 is unused.
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define ZAP_VERSION 2
