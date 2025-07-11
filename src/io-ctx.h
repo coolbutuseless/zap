@@ -6,8 +6,18 @@
 // Version of set of internal transformations
 // Anytime a transformation changes or is added, bump this version by 1
 // This number is written as the second byte of an uncompressed zap stream
+//
+// Version 1
+//   - Initial release 0.1.0
+// Version 2
+//   - v0.1.1 2025-07-11
+//   - add 2 extra flag bytes to header
+//   - flag1 
+//      - bit0 is used to indicate if the encoded stream uses VECSXP 
+//        references
+//   - flag2 is unused.
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define ZAP_VERSION 1
+#define ZAP_VERSION 2
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,6 +57,8 @@
 #define ZAP_STR_RAW        0  // Uncompressed
 #define ZAP_STR_MEGA       1  // Mega string
 
+#define ZAP_VEC_RAW        0  // Write all VECXXP as they are encountered
+#define ZAP_VEC_REF        1  // Cache VECSXPs and write references for duplicates
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Cache contents
@@ -69,6 +81,7 @@ typedef struct {
   int fct_transform;
   int dbl_transform;
   int str_transform;
+  int vec_transform;
   
   int lgl_threshold;
   int int_threshold;
@@ -90,9 +103,13 @@ typedef struct {
   // Storage for environments seen during serialization so that references
   // can be used
   SEXP cache;
+  
   R_xlen_t Nenv;
-  mph_t *env_hashmap;
+  mph_t *envsxp_hashmap;
 
+  R_xlen_t Nvecsxp;
+  mph_t *vecsxp_hashmap;
+  
   // user supplied data passed to callbacks
   // the two primary callbacks used to read/write data
   void *user_data; 

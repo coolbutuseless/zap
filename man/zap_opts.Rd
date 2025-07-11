@@ -12,6 +12,7 @@ zap_opts(
   fct,
   dbl,
   str,
+  list,
   lgl_threshold,
   int_threshold,
   fct_threshold,
@@ -34,26 +35,26 @@ FALSE will disable all transformations.}
   \item{32}{Print tree of serialized objects}
 }}
 
-\item{lgl}{transformation method for logical vectors. Default: 1
+\item{lgl}{transformation method for logical vectors. Default: 'packed'
 \describe{
   \item{\code{raw}}{Raw. No transformation}
   \item{\code{packed}}{Packed 2 bits per logical value}
 }}
 
-\item{int}{transformation method for integer vectors. Default: 3
+\item{int}{transformation method for integer vectors. Default: 'deltaframe'
 \describe{
   \item{\code{raw}}{Raw. No transformation}
   \item{\code{zzshuf}}{Zig-zag encoding, delta and shuffle}
   \item{\code{deltaframe}}{Delta frame-of-reference coding}
 }}
 
-\item{fct}{transformation method for factors vectors. Default: 1
+\item{fct}{transformation method for factors vectors. Default: 'packed'
 \describe{
   \item{\code{raw}}{Raw. No transformation}
   \item{\code{packed}}{Packed minimal bits per level}
 }}
 
-\item{dbl}{transformation method for doubles (and complex) vectors. Default: 3
+\item{dbl}{transformation method for doubles (and complex) vectors. Default: 'alp'
 \describe{
   \item{\code{raw}}{Raw. No transformation}
   \item{\code{shuffle}}{Byte shuffle}
@@ -61,10 +62,18 @@ FALSE will disable all transformations.}
   \item{\code{alp}}{ALP, Adaptive Lossless Floating Point compression}
 }}
 
-\item{str}{transformation method for character vectors. Default: 1
+\item{str}{transformation method for character vectors. Default: 'mega'
 \describe{
   \item{\code{raw}}{Raw. No transformation}
   \item{\code{mega}}{Concatenate all strings.  Length implicitly encoded by null bytes in strings}
+}}
+
+\item{list}{transformation method for lists (and data.frames).  Default: 'raw'
+\describe{
+  \item{\code{raw}}{Raw. All lists written out in-full}
+  \item{\code{reference}}{Cache lists and data.frames as they are seen, and 
+        if seen again, write out a reference to the prior object rather than 
+        writing out in-full.}
 }}
 
 \item{int_threshold, lgl_threshold, fct_threshold, dbl_threshold, str_threshold}{Below this threshold, no transformation will be done. All default to

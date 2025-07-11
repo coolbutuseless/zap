@@ -12,12 +12,12 @@
 #include "io-ctx.h"
 
 extern SEXP zap_version_(void);
-
 extern SEXP write_zap_(SEXP obj_, SEXP filename_, SEXP opts_) ;
 extern SEXP read_zap_(SEXP filename_, SEXP opts_);
-
 extern SEXP zap_count_(SEXP x_, SEXP opts_);
   
+extern SEXP address_(SEXP x_);
+    
 static const R_CallMethodDef CEntries[] = {
   
   {"zap_version_", (DL_FUNC) &zap_version_, 0},
@@ -26,6 +26,7 @@ static const R_CallMethodDef CEntries[] = {
   {"read_zap_"   , (DL_FUNC) &read_zap_   , 2},
   
   {"zap_count_", (DL_FUNC) &zap_count_, 2},
+  {"address_"  , (DL_FUNC) &address_  , 1},
   
   {NULL , NULL, 0}
 };

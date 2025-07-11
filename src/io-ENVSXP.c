@@ -126,7 +126,7 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   // Has this environment been seen in the hashmap cache?
   // If so, just return an environment reference
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  int hash_idx = mph_lookup(ctx->env_hashmap, (uint8_t *)&env_, 8);
+  int hash_idx = mph_lookup(ctx->envsxp_hashmap, (uint8_t *)&env_, 8);
   if (hash_idx >= 0) {
     // Found the environment in the cache
     write_uint8(ctx, ENV_REFERENCE);
@@ -142,7 +142,7 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   // Store reference to this environment so we can see if any future
   // environments are an exact match
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  hash_idx = mph_add(ctx->env_hashmap, (uint8_t *)&env_, 8);
+  hash_idx = mph_add(ctx->envsxp_hashmap, (uint8_t *)&env_, 8);
   if (hash_idx != ctx->Nenv) {
     Rf_error("write_ENVSXP(): Hashmap synchronization error %i != %i", (int)hash_idx, (int)ctx->Nenv);
   }

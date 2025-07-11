@@ -40,6 +40,7 @@ opts_t *parse_options(SEXP opts_) {
   opts->fct_transform  = ZAP_FCT_PACKED;
   opts->dbl_transform  = ZAP_DBL_ALP;
   opts->str_transform  = ZAP_STR_MEGA;
+  opts->vec_transform  = ZAP_VEC_RAW;
   
   opts->dbl_fallback   = ZAP_DBL_SHUF_DELTA;
   
@@ -130,6 +131,17 @@ opts_t *parse_options(SEXP opts_) {
       } else {
         Rf_warning("Option not understood: dbl = '%s'. Using 'alp'", val);
         opts->dbl_transform = ZAP_DBL_ALP;
+      }
+      
+    } else if (strcmp(opt_name, "list") == 0) {
+      const char *val = CHAR(STRING_ELT(val_, 0));
+      if (strcmp(val, "raw") == 0) {
+        opts->vec_transform = ZAP_VEC_RAW;
+      } else if (strcmp(val, "reference") == 0) {
+        opts->vec_transform = ZAP_VEC_REF;
+      } else {
+        Rf_warning("Option not understood: list = '%s'. Using 'raw'", val);
+        opts->vec_transform = ZAP_VEC_RAW;
       }
       
     } else if (strcmp(opt_name, "dbl_fallback") == 0) {
@@ -350,9 +362,30 @@ ctx_t *create_ctx(opts_t *opts) {
   SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_ENVSXP, env_cache_);
   UNPROTECT(1);
   
-  ctx->env_hashmap = mph_init(256);
-  if (ctx->env_hashmap == NULL) {
-    Rf_error("create_ctx(): Failed to create 'env_hashmap'");
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Setup a cache of environments
+  // Initially length=4, but this will get dynamically expanded as necessary
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ctx->Nvecsxp = 0;
+  SEXP vecsxp_cache_ = PROTECT(Rf_allocVector(VECSXP, 4));
+  SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP, vecsxp_cache_);
+  UNPROTECT(1);
+  
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Hashmap for ENVSXP
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ctx->envsxp_hashmap = mph_init(256);
+  if (ctx->envsxp_hashmap == NULL) {
+    Rf_error("create_ctx(): Failed to create 'envsxp_hashmap'");
+  }
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Hashmap for VECSXP
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ctx->vecsxp_hashmap = mph_init(256);
+  if (ctx->vecsxp_hashmap == NULL) {
+    Rf_error("create_ctx(): Failed to create 'vecsxp_hashmap'");
   }
   
   return ctx;
@@ -411,15 +444,16 @@ void ctx_destroy(ctx_t *ctx) {
   
   if (ctx->opts->verbosity == 16) {
     Rprintf("Env Hashmap ------------------\nTotal Items = %i\n", 
-            (int)ctx->env_hashmap->total_items);
-    for (int i = 0; i < ctx->env_hashmap->nbuckets; i++) {
-      bucket_t bucket = ctx->env_hashmap->bucket[i];
+            (int)ctx->envsxp_hashmap->total_items);
+    for (int i = 0; i < ctx->envsxp_hashmap->nbuckets; i++) {
+      bucket_t bucket = ctx->envsxp_hashmap->bucket[i];
       if (bucket.nitems > 0) {
         Rprintf("[%3i] %i\n", i, (int)bucket.nitems);
       }
     }
   }
-  mph_destroy(ctx->env_hashmap);
+  mph_destroy(ctx->envsxp_hashmap);
+  mph_destroy(ctx->vecsxp_hashmap);
   
   R_ReleaseObject(ctx->cache); // R object cache
   free(ctx);

@@ -46,30 +46,37 @@ zap_count <- function(x, opts = list(), ...) {
 #' }
 #' @param transform Enable transformations? Default: TRUE.  Setting to 
 #'        FALSE will disable all transformations.
-#' @param lgl transformation method for logical vectors. Default: 1
+#' @param lgl transformation method for logical vectors. Default: 'packed'
 #' \describe{
 #'   \item{\code{raw}}{Raw. No transformation}
 #'   \item{\code{packed}}{Packed 2 bits per logical value}
 #' }
-#' @param int transformation method for integer vectors. Default: 3
+#' @param int transformation method for integer vectors. Default: 'deltaframe'
 #' \describe{
 #'   \item{\code{raw}}{Raw. No transformation}
 #'   \item{\code{zzshuf}}{Zig-zag encoding, delta and shuffle}
 #'   \item{\code{deltaframe}}{Delta frame-of-reference coding}
 #' }
-#' @param fct transformation method for factors vectors. Default: 1
+#' @param fct transformation method for factors vectors. Default: 'packed'
 #' \describe{
 #'   \item{\code{raw}}{Raw. No transformation}
 #'   \item{\code{packed}}{Packed minimal bits per level}
 #' }
-#' @param dbl transformation method for doubles (and complex) vectors. Default: 3
+#' @param dbl transformation method for doubles (and complex) vectors. Default: 'alp'
 #' \describe{
 #'   \item{\code{raw}}{Raw. No transformation}
 #'   \item{\code{shuffle}}{Byte shuffle}
 #'   \item{\code{delta_shuffle}}{Byte shuffle with delta}
 #'   \item{\code{alp}}{ALP, Adaptive Lossless Floating Point compression}
 #' }
-#' @param str transformation method for character vectors. Default: 1
+#' @param list transformation method for lists (and data.frames).  Default: 'raw'
+#' \describe{
+#'   \item{\code{raw}}{Raw. All lists written out in-full}
+#'   \item{\code{reference}}{Cache lists and data.frames as they are seen, and 
+#'         if seen again, write out a reference to the prior object rather than 
+#'         writing out in-full.}
+#' }
+#' @param str transformation method for character vectors. Default: 'mega'
 #' \describe{
 #'   \item{\code{raw}}{Raw. No transformation}
 #'   \item{\code{mega}}{Concatenate all strings.  Length implicitly encoded by null bytes in strings}
@@ -92,6 +99,7 @@ zap_count <- function(x, opts = list(), ...) {
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 zap_opts <- function(transform, verbosity, 
                      lgl, int, fct, dbl, str, 
+                     list,
                      lgl_threshold, int_threshold, fct_threshold, 
                      dbl_threshold, str_threshold, 
                      dbl_fallback, ...) {
