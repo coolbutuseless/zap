@@ -161,8 +161,8 @@ SEXP write_zap_(SEXP obj_, SEXP dst_, SEXP opts_) {
   uint8_t *p = (uint8_t *)RAW(res_);
   p[0] = 'Z' | 0x80;
   p[1] = ZAP_VERSION;  
-  p[2] = 0x33;
-  p[3] = 0x00;
+  p[2] = opts->vec_transform == ZAP_VEC_REF;  // lowest bit indicates if list references are used
+  p[3] = 0x00; // Unused
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // - tidy memory
@@ -208,6 +208,9 @@ SEXP read_zap_(SEXP src_, SEXP opts_) {
   if (p[1] != ZAP_VERSION) {
     Rf_warning("read_zap_(): Version numbers to not match. Expecting %i, Found %i\nAttempting to continue ... ", 
              ZAP_VERSION, p[1]);
+  }
+  if (p[2] & FLAG_VECSXP_REF) {
+    opts->vec_transform = ZAP_VEC_REF;
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
