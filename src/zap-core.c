@@ -25,7 +25,26 @@ typedef struct {
   uint8_t *data;
 } raw_buffer_t;
 
-#define HEADER_LEN 2
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Header length = 4 bytes
+// [0] Z & 0x80
+// [1] Version number (uint8_t)
+// [2] flags1
+// [3] flags2
+//
+// Version 1
+//   - Initial release 0.1.0
+// Version 2
+//   - v0.1.1 2025-07-11
+//   - add 2 extra flag bytes to header
+//   - flag1 bit0 is used to indicate if the encoded stream uses VECSXP 
+//     references
+//   - flag2 is unused.
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#define HEADER_LEN 4
+
+#define FLAG_VECSXP_REF 0x01
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,6 +161,8 @@ SEXP write_zap_(SEXP obj_, SEXP dst_, SEXP opts_) {
   uint8_t *p = (uint8_t *)RAW(res_);
   p[0] = 'Z' | 0x80;
   p[1] = ZAP_VERSION;  
+  p[2] = 0x33;
+  p[3] = 0x00;
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // - tidy memory

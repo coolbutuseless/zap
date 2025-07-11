@@ -1,10 +1,18 @@
 
-# zap 0.1.0.9002
+# zap 0.1.1
 
-* [9002] 2025-07-10 [enhance] Environment cache now uses a hashmap
-* [9001] 2025-07-03 [bugfix] proper initialisation of LGLSXP. bug introduced
+* [enhance] Bump ZAP_VERSION to 2
+    * Added 2 more bytes to header.
+    * The first byte is a byte for flags
+    * The second bytes is currently unused
+    * Only one flag bit currently used:
+        * flag to indicate if the writing process made use of list references.
+* [enhance] VECSXP (lists and data.frames) can now also be cached by setting
+  `list = 'reference'`.  This is not done by default as tracking VECSXPs
+  can be costly during both writing and reading.
+* [enhance] Environment cache now uses a hashmap
+* [bugfix] proper initialization of LGLSXP. bug introduced
   in changeover to new 1-bit handling
-* [9000] 2025-07-03 [enhance] dynamic environment cache
 
 
 # zap 0.1.0   2025-07-02

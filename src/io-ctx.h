@@ -6,8 +6,17 @@
 // Version of set of internal transformations
 // Anytime a transformation changes or is added, bump this version by 1
 // This number is written as the second byte of an uncompressed zap stream
+//
+// Version 1
+//   - Initial release 0.1.0
+// Version 2
+//   - v0.1.1 2025-07-11
+//   - add 2 extra flag bytes to header
+//   - flag1 bit0 is used to indicate if the encoded stream uses VECSXP 
+//     references
+//   - flag2 is unused.
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define ZAP_VERSION 1
+#define ZAP_VERSION 2
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
