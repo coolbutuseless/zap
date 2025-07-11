@@ -44,22 +44,23 @@ test_that("list = 'reference' option works", {
     }
   }
   
-  b <- binary_tree(1)
-  expect_equal(
-    rlang::obj_address(b[[1]]), 
-    rlang::obj_address(b[[2]])
-  )
-  
-  v1 <- zap_write(b) |> zap_read()
-  expect_false(
-    rlang::obj_address(v1[[1]]) ==  rlang::obj_address(v1[[2]])
-  )
-  
-  
-  v2 <- zap_write(b, list = 'reference') |> zap_read()
-  expect_true(
-    rlang::obj_address(v2[[1]]) ==  rlang::obj_address(v2[[2]])
-  )
-  
+  if (requireNamespace('rlang', quietly = TRUE)) {
+    b <- binary_tree(1)
+    expect_equal(
+      rlang::obj_address(b[[1]]), 
+      rlang::obj_address(b[[2]])
+    )
+    
+    v1 <- zap_write(b) |> zap_read()
+    expect_false(
+      rlang::obj_address(v1[[1]]) ==  rlang::obj_address(v1[[2]])
+    )
+    
+    
+    v2 <- zap_write(b, list = 'reference') |> zap_read()
+    expect_true(
+      rlang::obj_address(v2[[1]]) ==  rlang::obj_address(v2[[2]])
+    )
+  }
   
 })
