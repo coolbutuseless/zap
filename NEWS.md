@@ -1,5 +1,10 @@
 
-# zap 0.1.1
+# zap 0.1.1.9000
+
+* [refactor] 2025-07-12 tidy VECSXP to separate functions for 'raw'
+  and 'reference' handling.
+
+# zap 0.1.1  2025-07-11
 
 * [enhance] Bump ZAP_VERSION to 2
     * Added 2 more bytes to header.
