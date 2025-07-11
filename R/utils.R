@@ -34,3 +34,15 @@ find_args <- function (...) {
   args
 }
 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#' Find the objects address in memory 
+#' 
+#' @param x object
+#' @return string version of objects address
+#' @noRd
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+address <- function(x) {
+  .Call(address_, x)
+}
+
