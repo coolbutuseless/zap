@@ -374,7 +374,7 @@ ctx_t *create_ctx(opts_t *opts) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // A data.frame for tracking SEXP types and sizes
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (opts->verbosity & 64) {
+  if (opts->verbosity & ZAP_VERBOSITY_OBJDF) {
     ctx->obj_count    = 0;
     ctx->obj_capacity = 10;
     SEXP depth_   = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));

@@ -166,9 +166,9 @@ SEXP write_zap_(SEXP obj_, SEXP dst_, SEXP opts_) {
   p[3] = 0x00; // Unused
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // - If (verbosity & 64) then return the tally structure, not the data!
+  // - If (verbosity & ZAP_VERBOSITY_OBJEDF) then return the tally structure, not the data!
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (ctx->opts->verbosity & 64) {
+  if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
     res_ = PROTECT(VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY)); nprotect++;
     df_truncate(res_, ctx->obj_count);
     set_df_attributes(res_);

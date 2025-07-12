@@ -132,7 +132,7 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Track objects seen in data.frame if requested
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (ctx->opts->verbosity & 64) {
+  if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
     SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
     if (ctx->obj_count >= ctx->obj_capacity) {
       df_grow(objdf_);
