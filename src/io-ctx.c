@@ -377,12 +377,12 @@ ctx_t *create_ctx(opts_t *opts) {
   if (opts->verbosity & ZAP_VERBOSITY_OBJDF) {
     ctx->obj_count    = 0;
     ctx->obj_capacity = 10;
-    SEXP depth_   = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
-    SEXP type_    = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
-    SEXP start_   = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
-    SEXP end_     = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
-    SEXP altrep_  = PROTECT(Rf_allocVector(LGLSXP, ctx->obj_capacity));
-    SEXP rserial_ = PROTECT(Rf_allocVector(LGLSXP, ctx->obj_capacity));
+    SEXP depth_   = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP type_    = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP start_   = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP end_     = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP altrep_  = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP rserial_ = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)ctx->obj_capacity));
     memset(INTEGER(depth_)  , 0, ctx->obj_capacity * sizeof(int));
     memset(INTEGER(type_)   , 0, ctx->obj_capacity * sizeof(int));
     memset(INTEGER(start_)  , 0, ctx->obj_capacity * sizeof(int));

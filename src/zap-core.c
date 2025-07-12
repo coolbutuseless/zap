@@ -168,7 +168,7 @@ SEXP write_zap_(SEXP obj_, SEXP dst_, SEXP opts_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
     res_ = PROTECT(VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY)); nprotect++;
-    df_truncate(res_, ctx->obj_count);
+    df_truncate(res_, (int)ctx->obj_count);
     set_df_attributes(res_);
   }
   

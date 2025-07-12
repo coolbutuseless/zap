@@ -138,8 +138,8 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
   
   if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
     ctx->depth++;
-    start = get_position(ctx->user_data);
-    obj_count = ctx->obj_count++;
+    start = (int)get_position(ctx->user_data);
+    obj_count = (int)ctx->obj_count++;
   }
   
   
@@ -240,7 +240,7 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
     
     SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
     
-    int end = get_position(ctx->user_data);
+    int end = (int)get_position(ctx->user_data);
     objdf_add_row(objdf_, obj_count, ctx->depth, TYPEOF(x_), start, 
                   end, ALTREP(x_), used_rserialize);
     

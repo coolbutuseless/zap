@@ -38,11 +38,9 @@ zap_count <- function(x, opts = list(), ...) {
 #' 
 #' @param verbosity Verbosity level. Default: 0 (no text output).
 #' \describe{
-#'   \item{16}{Print tally of all SEXPs in serialized object. Objects marked with 
-#'         \code{+} are ALTREP. This option prints up to 3 separate tallies;
-#'         the tally of all SEXPs, the tally of ALTREP SEXPs, the tally of 
-#'         SEXPs passed to R's builtin method for serialization}
-#'   \item{32}{Print tree of serialized objects}
+#'   \item{64}{Return a data.frame with information on each SEXP within the object. 
+#'        \code{start} and \code{end} values are the position of the object within
+#'        the \emph{uncompressed} stream}
 #' }
 #' @param transform Enable transformations? Default: TRUE.  Setting to 
 #'        FALSE will disable all transformations.
