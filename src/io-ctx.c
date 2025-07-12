@@ -396,7 +396,7 @@ ctx_t *create_ctx(opts_t *opts) {
       "altrep", altrep_
     ));
     SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY, objs_);
-    UNPROTECT(5);
+    UNPROTECT(6);
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
