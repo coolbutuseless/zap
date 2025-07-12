@@ -127,11 +127,11 @@ extern char *sexp_nms[32];
 // Write any SEXP object 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void write_sexp(ctx_t *ctx, SEXP x_) {
+  ctx->depth++;
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Generate tree output if user requested
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ctx->depth++;
   if (ctx->opts->verbosity & ZAP_VERB_TREE) {
     for (int i = 0; i < ctx->depth; i++) {
       Rprintf("  ");
@@ -148,7 +148,9 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
       df_grow(objdf_);
       ctx->obj_capacity *= 2;
     }
-    objdf_add_row(objdf_, ctx->obj_count, TYPEOF(x_), 0, ctx->depth);
+    int start = 0;
+    int end = 0;
+    objdf_add_row(objdf_, ctx->obj_count, ctx->depth, TYPEOF(x_), start, end, ALTREP(x_));
     ctx->obj_count++;
   }
   
