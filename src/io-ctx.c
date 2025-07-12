@@ -461,10 +461,6 @@ ctx_t *create_unserialize_ctx(void *user_data,
 void ctx_destroy(ctx_t *ctx) {
   if (ctx == NULL) return;
   
-  if ((ctx->opts != NULL) && (ctx->opts->verbosity & ZAP_VERB_TALLY)) {
-    dump_tally(ctx);
-  }
-  
   for (int i = 0; i < CTX_NBUFS; i++) {
     free(ctx->buf[i]);
   }
@@ -524,56 +520,6 @@ char *sexp_nms[32] = {
   "unused"     ,
   "unused"     
 };
-
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Dump three tallies to screen
-//  - all SEXPs
-//  - ALTREPs
-//  - SEXPs which were handled with R's serialization framework
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void dump_tally(ctx_t *ctx) {
-  
-  bool has_values = false;
-  for (int i = 0; i < 32; i++) {
-    has_values |= (ctx->tally_sexp[i] > 0);
-  }
-  if (has_values) {
-    Rprintf("SEXP\n");
-    for (int i = 0; i < 32; i++) {
-      if (ctx->tally_sexp[i] > 0) {
-        Rprintf("    %-13s %3i\n", sexp_nms[i], ctx->tally_sexp[i]);
-      }
-    }
-  }
-  
-  has_values = false;
-  for (int i = 0; i < 32; i++) {
-    has_values |= (ctx->tally_altrep[i] > 0);
-  }
-  if (has_values) {
-    Rprintf("ALTREP\n");
-    for (int i = 0; i < 32; i++) {
-      if (ctx->tally_altrep[i] > 0) {
-        Rprintf("    %-13s %3i\n", sexp_nms[i], ctx->tally_altrep[i]);
-      }
-    }
-  }
-  
-  has_values = false;
-  for (int i = 0; i < 32; i++) {
-    has_values |= (ctx->tally_serial[i] > 0);
-  }
-  if (has_values) {
-    Rprintf("RSerialize\n");
-    for (int i = 0; i < 32; i++) {
-      if (ctx->tally_serial[i] > 0) {
-        Rprintf("    %-13s %3i\n", sexp_nms[i], ctx->tally_serial[i]);
-      }
-    }
-  }
-}
-
 
 
 

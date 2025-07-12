@@ -130,18 +130,8 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
   ctx->depth++;
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Generate tree output if user requested
+  // Track objects seen in data.frame if requested
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (ctx->opts->verbosity & ZAP_VERB_TREE) {
-    for (int i = 0; i < ctx->depth; i++) {
-      Rprintf("  ");
-    }
-    Rprintf("%s%s\n", 
-            sexp_nms[TYPEOF(x_) &0x1f],
-            ALTREP(x_) ? " +" : ""
-    );
-  }
-  
   if (ctx->opts->verbosity & 64) {
     SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
     if (ctx->obj_count >= ctx->obj_capacity) {
@@ -164,9 +154,6 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
   // For ALTREP just serialize the whole object
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (ALTREP(x_)) {
-    if (ctx->opts->verbosity & ZAP_VERB_TALLY) {
-      ctx->tally_altrep[TYPEOF(x_) & 0x1f]++;
-    }
     write_rserialize(ctx, x_);
     
     ctx->depth--;
@@ -235,9 +222,6 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
       // For any SEXP which is not handled above e.g. BCODESXP, just
       // use R's serialization.  Eventually it'd be good to handle all
       // SEXPs in zap
-      if (ctx->opts->verbosity & ZAP_VERB_TALLY) {
-        ctx->tally_serial[TYPEOF(x_) & 0x1f]++;
-      }
       write_rserialize(ctx, x_);
       possibly_has_attrs = false;
     }

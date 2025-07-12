@@ -32,8 +32,7 @@
 //    TALLY outputs a tally at the end of the serialization
 //    TRE   outputs an indented tree of all SEXPs as they are written
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define ZAP_VERB_TALLY 16
-#define ZAP_VERB_TREE  32
+#define ZAP_VERBOSITY_OBJDF  64
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -192,7 +191,6 @@ uint8_t read_uint8(ctx_t *ctx);
 // For read_len()/write_len()
 #include "utils-varint.h"
 
-void dump_tally(ctx_t *ctx);
 
 
 
