@@ -142,7 +142,7 @@ void objdf_add_row(SEXP df_, int idx, int depth, int type, int start,
   INTEGER(col_)[idx] = start + 4L + 1L;  // header length + convert to R idx
 
   col_ = VECTOR_ELT(df_, 3);
-  INTEGER(col_)[idx] = end + 4 + 1;  // header length + convert to R idx
+  INTEGER(col_)[idx] = end + 4 + 1L - 1L;  // header length + convert to R idx
 
   col_ = VECTOR_ELT(df_, 4);
   INTEGER(col_)[idx] = altrep;
