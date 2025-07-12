@@ -2,7 +2,7 @@
 # zap 0.1.1.9001
 
 * [9001] [enhance] 2025-07-12 return a data.structure detailing the objects
-  which have been serialized.
+  which have been serialized when `verbosity = 64` set
 * [9000] [refactor] 2025-07-12 tidy VECSXP to separate functions for 'raw'
   and 'reference' handling.
 

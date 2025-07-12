@@ -303,6 +303,20 @@ res$`itr/sec` <- round(res$`itr/sec`, 1)
 knitr::kable(res, caption = "Reading 'diamonds' from file")
 ```
 
+## Verbose output
+
+When `verbosity = 64` a data.frame of object information is returned instead
+of the serialized object.
+
+* `depth` recursion depth
+* `type` the SEXP type
+* `start`/`end` are the locations of this data in the uncompressed zap stream
+* `altrep` was this item ALTREP?
+* `rserialize` did this item use the fallback R serialization infrastructure?
+
+```{r}
+zap_write(mtcars, verbosity = 64)
+```
 
 
 
