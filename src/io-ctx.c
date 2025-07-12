@@ -382,21 +382,24 @@ ctx_t *create_ctx(opts_t *opts) {
     SEXP start_   = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
     SEXP end_     = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
     SEXP altrep_  = PROTECT(Rf_allocVector(LGLSXP, ctx->obj_capacity));
-    memset(INTEGER(depth_) , 0, ctx->obj_capacity * sizeof(int));
-    memset(INTEGER(type_)  , 0, ctx->obj_capacity * sizeof(int));
-    memset(INTEGER(start_) , 0, ctx->obj_capacity * sizeof(int));
-    memset(INTEGER(end_)   , 0, ctx->obj_capacity * sizeof(int));
-    memset(INTEGER(altrep_), 0, ctx->obj_capacity * sizeof(int));
+    SEXP rserial_ = PROTECT(Rf_allocVector(LGLSXP, ctx->obj_capacity));
+    memset(INTEGER(depth_)  , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(type_)   , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(start_)  , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(end_)    , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(altrep_) , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(rserial_), 0, ctx->obj_capacity * sizeof(int));
     SEXP objs_ = PROTECT(create_named_list(
-      5, 
-      "depth" , depth_,
-      "type"  , type_,
-      "start" , start_,
-      "end"   , end_,
-      "altrep", altrep_
+      6, 
+      "depth"     , depth_,
+      "type"      , type_,
+      "start"     , start_,
+      "end"       , end_,
+      "altrep"    , altrep_,
+      "rserialize", rserial_
     ));
     SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY, objs_);
-    UNPROTECT(6);
+    UNPROTECT(7);
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

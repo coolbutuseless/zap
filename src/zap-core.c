@@ -52,7 +52,6 @@ typedef struct {
 // Resize the data capacity of a 'raw_buffer_t'
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void expand_raw_buffer(raw_buffer_t *buffer, size_t len) {
-  
   buffer->capacity = len;
   buffer->data = realloc(buffer->data, buffer->capacity);
 }
@@ -96,7 +95,6 @@ void read_raw_buffer(void *user_data, void *buf, size_t len) {
   
   memcpy(buf, buffer->data + buffer->pos, len);
   buffer->pos += len;
-  
 }
 
 
@@ -186,6 +184,11 @@ SEXP write_zap_(SEXP obj_, SEXP dst_, SEXP opts_) {
   return res_;
 }
 
+
+size_t get_position(void *user_data) {
+  raw_buffer_t *buffer = (raw_buffer_t *)user_data;
+  return buffer->pos;
+}
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -122,26 +122,24 @@ void read_attrs(ctx_t *ctx, SEXP obj_) {
 // from ctx.c
 extern char *sexp_nms[32];
 
+extern size_t get_position(void *user_data);
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Write any SEXP object 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void write_sexp(ctx_t *ctx, SEXP x_) {
-  ctx->depth++;
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Track objects seen in data.frame if requested
+  // Track objects 
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  bool used_rserialize = false;
+  int start;
+  int obj_count;
+  
   if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
-    SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
-    if (ctx->obj_count >= ctx->obj_capacity) {
-      df_grow(objdf_);
-      ctx->obj_capacity *= 2;
-    }
-    int start = 0;
-    int end = 0;
-    objdf_add_row(objdf_, ctx->obj_count, ctx->depth, TYPEOF(x_), start, end, ALTREP(x_));
-    ctx->obj_count++;
+    ctx->depth++;
+    start = get_position(ctx->user_data);
+    obj_count = ctx->obj_count++;
   }
   
   
@@ -222,6 +220,7 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
       // For any SEXP which is not handled above e.g. BCODESXP, just
       // use R's serialization.  Eventually it'd be good to handle all
       // SEXPs in zap
+      used_rserialize = true;
       write_rserialize(ctx, x_);
       possibly_has_attrs = false;
     }
@@ -237,7 +236,22 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
     write_attrs(ctx, x_);
   }
   
-  ctx->depth--;
+  if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
+    
+    SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
+    
+    int end = get_position(ctx->user_data);
+    objdf_add_row(objdf_, obj_count, ctx->depth, TYPEOF(x_), start, 
+                  end, ALTREP(x_), used_rserialize);
+    
+    ctx->depth--;
+    if (ctx->obj_count >= ctx->obj_capacity) {
+      df_grow(objdf_);
+      ctx->obj_capacity *= 2;
+    }
+  }
+  
+  
 }
 
 
