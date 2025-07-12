@@ -123,9 +123,6 @@ typedef struct {
   
   // Storage and tracking for verbose output
   int depth;            // tracking depth for tree printing
-  int tally_sexp  [32]; // Vanilla SEXP objects
-  int tally_altrep[32]; // ALTREP objects
-  int tally_serial[32]; // SEXP types which were serialized by the internal serialization
   size_t obj_count;  
   size_t obj_capacity;
   

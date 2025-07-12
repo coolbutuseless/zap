@@ -91,11 +91,11 @@ zap_write(diamonds, dst = "diamonds.zap", compress = "zstd")
 
 | expression              |      min |   median | itr/sec |    size |
 |:------------------------|---------:|---------:|--------:|--------:|
-| saveRDS(compress=FALSE) |   2.49ms |   3.59ms |   269.4 | 3452964 |
-| qs2::qs_save()          |   8.03ms |   8.45ms |   117.7 |  570855 |
-| zap_write()             |   3.49ms |   3.91ms |   251.1 |  329681 |
-| saveRDS(zstd)           |  44.86ms |  46.12ms |    21.3 |  524483 |
-| saveRDS(xz)             | 884.36ms | 884.36ms |     1.1 |  332468 |
+| saveRDS(compress=FALSE) |   2.39ms |   2.87ms |   286.5 | 3452964 |
+| qs2::qs_save()          |   8.02ms |   8.42ms |   118.6 |  570855 |
+| zap_write()             |   3.68ms |   4.16ms |   234.9 |  329681 |
+| saveRDS(zstd)           |  43.79ms |  44.64ms |    22.1 |  524483 |
+| saveRDS(xz)             | 815.38ms | 815.38ms |     1.2 |  332468 |
 
 Writing ‘diamonds’ to file
 
@@ -107,14 +107,14 @@ zap_read("diamonds.zap")
 
 <img src="man/figures/README-unnamed-chunk-6-1.png" width="100%" />
 
-| expression              |     min |  median | itr/sec |    size |
-|:------------------------|--------:|--------:|--------:|--------:|
-| readRDS(compress=FALSE) |  1.85ms |  2.06ms |   483.2 | 3452964 |
-| qs2::qs_read()          |  3.39ms |  3.62ms |   274.9 |  570855 |
-| zap_read()              |   2.3ms |  2.54ms |   389.6 |  329681 |
-| readRDS(gzip)           |  3.52ms |   3.7ms |   269.5 |  513651 |
-| readRDS(zstd)           |  4.73ms |  4.96ms |   200.8 |  524483 |
-| readRDS(xz)             | 15.29ms | 15.53ms |    64.5 |  332468 |
+| expression              |    min |  median | itr/sec |    size |
+|:------------------------|-------:|--------:|--------:|--------:|
+| readRDS(compress=FALSE) |  1.8ms |  1.93ms |   520.7 | 3452964 |
+| qs2::qs_read()          | 3.25ms |   3.4ms |   292.3 |  570855 |
+| zap_read()              | 1.97ms |  2.31ms |   436.6 |  329681 |
+| readRDS(gzip)           | 3.45ms |  3.56ms |   280.2 |  513651 |
+| readRDS(zstd)           | 4.54ms |  4.72ms |   211.4 |  524483 |
+| readRDS(xz)             |   15ms | 15.29ms |    65.5 |  332468 |
 
 Reading ‘diamonds’ from file
 
@@ -133,29 +133,29 @@ instead of the serialized object.
 
 ``` r
 zap_write(mtcars, verbosity = 64)
-#> # A tibble: 20 × 6
-#>    depth type    start   end altrep rserialize
-#>    <int> <fct>   <int> <int> <lgl>  <lgl>     
-#>  1     1 VECSXP      5  3512 FALSE  FALSE     
-#>  2     2 REALSXP     7   274 FALSE  FALSE     
-#>  3     2 REALSXP   274   541 FALSE  FALSE     
-#>  4     2 REALSXP   541   808 FALSE  FALSE     
-#>  5     2 REALSXP   808  1075 FALSE  FALSE     
-#>  6     2 REALSXP  1075  1342 FALSE  FALSE     
-#>  7     2 REALSXP  1342  1609 FALSE  FALSE     
-#>  8     2 REALSXP  1609  1876 FALSE  FALSE     
-#>  9     2 REALSXP  1876  2143 FALSE  FALSE     
-#> 10     2 REALSXP  2143  2410 FALSE  FALSE     
-#> 11     2 REALSXP  2410  2677 FALSE  FALSE     
-#> 12     2 REALSXP  2677  2944 FALSE  FALSE     
-#> 13     2 LISTSXP  2944  3489 FALSE  FALSE     
-#> 14     3 SYMSXP   2946  2956 FALSE  FALSE     
-#> 15     3 STRSXP   2956  3013 FALSE  FALSE     
-#> 16     3 SYMSXP   3013  3027 FALSE  FALSE     
-#> 17     3 STRSXP   3027  3454 FALSE  FALSE     
-#> 18     3 SYMSXP   3454  3464 FALSE  FALSE     
-#> 19     3 STRSXP   3464  3487 FALSE  FALSE     
-#> 20     2 STRSXP   3489  3512 FALSE  FALSE
+#> # A tibble: 20 × 7
+#>    depth type    start   end altrep rserialize attrs
+#>    <int> <fct>   <int> <int> <lgl>  <lgl>      <lgl>
+#>  1     1 VECSXP      5  3512 FALSE  FALSE      TRUE 
+#>  2     2 REALSXP     7   274 FALSE  FALSE      TRUE 
+#>  3     2 REALSXP   274   541 FALSE  FALSE      TRUE 
+#>  4     2 REALSXP   541   808 FALSE  FALSE      TRUE 
+#>  5     2 REALSXP   808  1075 FALSE  FALSE      TRUE 
+#>  6     2 REALSXP  1075  1342 FALSE  FALSE      TRUE 
+#>  7     2 REALSXP  1342  1609 FALSE  FALSE      TRUE 
+#>  8     2 REALSXP  1609  1876 FALSE  FALSE      TRUE 
+#>  9     2 REALSXP  1876  2143 FALSE  FALSE      TRUE 
+#> 10     2 REALSXP  2143  2410 FALSE  FALSE      TRUE 
+#> 11     2 REALSXP  2410  2677 FALSE  FALSE      TRUE 
+#> 12     2 REALSXP  2677  2944 FALSE  FALSE      TRUE 
+#> 13     2 LISTSXP  2944  3489 FALSE  FALSE      TRUE 
+#> 14     3 SYMSXP   2946  2956 FALSE  FALSE      TRUE 
+#> 15     3 STRSXP   2956  3013 FALSE  FALSE      TRUE 
+#> 16     3 SYMSXP   3013  3027 FALSE  FALSE      TRUE 
+#> 17     3 STRSXP   3027  3454 FALSE  FALSE      TRUE 
+#> 18     3 SYMSXP   3454  3464 FALSE  FALSE      TRUE 
+#> 19     3 STRSXP   3464  3487 FALSE  FALSE      TRUE 
+#> 20     2 STRSXP   3489  3512 FALSE  FALSE      TRUE
 ```
 
 # `zap` Technical details

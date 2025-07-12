@@ -130,25 +130,28 @@ void df_truncate(SEXP df_, int nrows) {
 // Add a row to the specific "objs tally" data.frame
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void objdf_add_row(SEXP df_, int idx, int depth, int type, int start, 
-                   int end, int altrep, int rserialize) {
+                   int end, int altrep, int rserialize, int has_attrs) {
   
   SEXP col_ = VECTOR_ELT(df_, 0);
   INTEGER(col_)[idx] = depth;
   
   col_ = VECTOR_ELT(df_, 1);
-  INTEGER(col_)[idx] = type; 
-  
+  INTEGER(col_)[idx] = type;
+
   col_ = VECTOR_ELT(df_, 2);
-  INTEGER(col_)[idx] = start + 4 + 1;  // header length + convert to R idx
-  
+  INTEGER(col_)[idx] = start + 4L + 1L;  // header length + convert to R idx
+
   col_ = VECTOR_ELT(df_, 3);
   INTEGER(col_)[idx] = end + 4 + 1;  // header length + convert to R idx
-  
+
   col_ = VECTOR_ELT(df_, 4);
   INTEGER(col_)[idx] = altrep;
   
   col_ = VECTOR_ELT(df_, 5);
   INTEGER(col_)[idx] = rserialize;
+  
+  col_ = VECTOR_ELT(df_, 6);
+  INTEGER(col_)[idx] = has_attrs;
 }
 
 

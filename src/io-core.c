@@ -142,12 +142,6 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
     obj_count = (int)ctx->obj_count++;
   }
   
-  
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Keep a tally of the types seen (for verbose tally output)
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ctx->tally_sexp[TYPEOF(x_) & 0x1f]++;
-  
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // For ALTREP just serialize the whole object
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -236,19 +230,24 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
     write_attrs(ctx, x_);
   }
   
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Log the SEXP 
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
     
     SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
-    
-    int end = (int)get_position(ctx->user_data);
-    objdf_add_row(objdf_, obj_count, ctx->depth, TYPEOF(x_), start, 
-                  end, ALTREP(x_), used_rserialize);
-    
-    ctx->depth--;
     if (ctx->obj_count >= ctx->obj_capacity) {
       df_grow(objdf_);
       ctx->obj_capacity *= 2;
     }
+    
+    
+    int end = (int)get_position(ctx->user_data);
+    objdf_add_row(objdf_, obj_count, ctx->depth, TYPEOF(x_), start,
+                  end, ALTREP(x_), used_rserialize, possibly_has_attrs);
+    
+    ctx->depth--;
   }
   
   

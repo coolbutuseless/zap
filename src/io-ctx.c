@@ -383,23 +383,26 @@ ctx_t *create_ctx(opts_t *opts) {
     SEXP end_     = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
     SEXP altrep_  = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)ctx->obj_capacity));
     SEXP rserial_ = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP attrs_   = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)ctx->obj_capacity));
     memset(INTEGER(depth_)  , 0, ctx->obj_capacity * sizeof(int));
     memset(INTEGER(type_)   , 0, ctx->obj_capacity * sizeof(int));
     memset(INTEGER(start_)  , 0, ctx->obj_capacity * sizeof(int));
     memset(INTEGER(end_)    , 0, ctx->obj_capacity * sizeof(int));
     memset(INTEGER(altrep_) , 0, ctx->obj_capacity * sizeof(int));
     memset(INTEGER(rserial_), 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(attrs_)  , 0, ctx->obj_capacity * sizeof(int));
     SEXP objs_ = PROTECT(create_named_list(
-      6, 
+      7, 
       "depth"     , depth_,
       "type"      , type_,
       "start"     , start_,
       "end"       , end_,
       "altrep"    , altrep_,
-      "rserialize", rserial_
+      "rserialize", rserial_,
+      "attrs"     , attrs_
     ));
     SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY, objs_);
-    UNPROTECT(7);
+    UNPROTECT(8);
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
