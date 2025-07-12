@@ -50,7 +50,9 @@ void set_df_attributes(SEXP df_) {
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Create a named list
+// Create a named list  
+//   - fill get turned into data.frame before return with 'set_df_attributes'
+//     once we know the number of rows
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SEXP create_named_list(int n, ...) {
   
@@ -78,19 +80,75 @@ SEXP create_named_list(int n, ...) {
 }
 
 
+
+
+
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Fetch a data.frame column by name or else return NULL
+// Grow a data.frame
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-SEXP get_df_col(SEXP df_, const char *str) {
-  SEXP col   = R_NilValue;
-  SEXP names = Rf_getAttrib(df_, R_NamesSymbol);
+void df_grow(SEXP df_) {
+  SEXP col0 = VECTOR_ELT(df_, 0);
+  int current_nrows = Rf_length(col0);
+  int new_nrows = 2 * current_nrows;
   
   for (int i = 0; i < Rf_length(df_); i++) {
-    if(strcmp(CHAR(STRING_ELT(names, i)), str) == 0) {
-      col = VECTOR_ELT(df_, i);
-      break;
-    }
+    SEXP col_ = VECTOR_ELT(df_, i);
+    SEXP newcol_ = PROTECT(Rf_lengthgets(col_, (R_len_t)new_nrows));
+    SET_VECTOR_ELT(df_, i, newcol_);
+    UNPROTECT(1);
   }
-  return col;
 }
+
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Data.frames are overallocated during the accumulation of device calls.
+// These data.frames are truncated back to their final size before returning
+// them to R
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void df_truncate(SEXP df_, int nrows) {
+  SEXP col0 = VECTOR_ELT(df_, 0);
+  int current_nrows = Rf_length(col0);
+  if (nrows == current_nrows) {
+    return;
+  } else if (nrows > current_nrows) {
+    Rf_error("df_truncate issue: %i > %i", nrows, current_nrows);
+  }
+  
+  for (int i = 0; i < Rf_length(df_); i++) {
+    SEXP col_ = VECTOR_ELT(df_, i);
+    SEXP newcol_ = PROTECT(Rf_lengthgets(col_, (R_len_t)nrows));
+    SET_VECTOR_ELT(df_, i, newcol_);
+    UNPROTECT(1);
+  }
+}
+
+
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Add a row to the specific "objs tally" data.frame
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void objdf_add_row(SEXP df_, int idx, int type, int loc, int depth) {
+
+  SEXP type_ = VECTOR_ELT(df_, 0);
+  INTEGER(type_)[idx] = type; 
+  
+  SEXP loc_ = VECTOR_ELT(df_, 1);
+  INTEGER(loc_)[idx] = loc;
+  
+  SEXP depth_ = VECTOR_ELT(df_, 2);
+  INTEGER(depth_)[idx] = depth;
+}
+
+
+
+
+
+
+
+
+
+
+
 

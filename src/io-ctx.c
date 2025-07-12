@@ -377,17 +377,20 @@ ctx_t *create_ctx(opts_t *opts) {
   if (opts->verbosity & 64) {
     ctx->obj_count    = 0;
     ctx->obj_capacity = 10;
-    SEXP obj_type_ = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
-    SEXP obj_loc_  = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
-    memset(INTEGER(obj_type_), 0, ctx->obj_capacity * sizeof(int));
-    memset(INTEGER(obj_loc_) , 0, ctx->obj_capacity * sizeof(int));
+    SEXP type_  = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
+    SEXP loc_   = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
+    SEXP depth_ = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
+    memset(INTEGER(type_) , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(loc_)  , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(depth_), 0, ctx->obj_capacity * sizeof(int));
     SEXP objs_ = PROTECT(create_named_list(
-      2, 
-      "type", obj_type_,
-      "loc" , obj_loc_
+      3, 
+      "type" , type_,
+      "loc"  , loc_,
+      "depth", depth_
     ));
     SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY, objs_);
-    UNPROTECT(3);
+    UNPROTECT(4);
   }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

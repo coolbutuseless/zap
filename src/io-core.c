@@ -29,6 +29,8 @@
 #include "io-factor.h"
 #include "io-serialize.h"
 
+#include "utils-df.h"
+
 //   0	NILSXP	NULL ------------------------ Yes
 //   1	SYMSXP	symbols --------------------- Yes
 //   2	LISTSXP	pairlists ------------------- Yes                   
@@ -139,6 +141,17 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
             ALTREP(x_) ? " +" : ""
     );
   }
+  
+  if (ctx->opts->verbosity & 64) {
+    SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
+    if (ctx->obj_count >= ctx->obj_capacity) {
+      df_grow(objdf_);
+      ctx->obj_capacity *= 2;
+    }
+    objdf_add_row(objdf_, ctx->obj_count, TYPEOF(x_), 0, ctx->depth);
+    ctx->obj_count++;
+  }
+  
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Keep a tally of the types seen (for verbose tally output)

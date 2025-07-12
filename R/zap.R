@@ -135,7 +135,45 @@ zap_opts <- function(transform, verbosity,
 zap_write <- function(x, dst = NULL, compress = Sys.getenv('zap_compress_default'), opts = list(), ...) {
   opts <- modify_list(opts, list(...));
   res <- .Call(write_zap_, x, dst, opts)
-  if (is.data.frame(res)) return(res) # Debug output is in a data.frame
+  if (is.data.frame(res)) {
+    # This is the data.frame of object countschar *sexp_nms[32] = {
+   sexp_names <- c(
+     "NILSXP"	    ,
+    "SYMSXP"	    ,
+    "LISTSXP"	    ,
+    "CLOSXP"	    ,
+    "ENVSXP"	    ,
+    "PROMSXP"	    ,
+    "LANGSXP"	    ,
+    "SPECIALSXP"  ,
+    "BUILTINSXP"  ,
+    "CHARSXP"	    ,
+    "LGLSXP"	    ,
+    "unused"      ,
+    "unused"      ,
+    "INTSXP"	    ,
+    "REALSXP"	    ,
+    "CPLXSXP"	    ,
+    "STRSXP"	    ,
+    "DOTSXP"	    ,
+    "ANYSXP"	    ,
+    "VECSXP"	    ,
+    "EXPRSXP"	    ,
+    "BCODESXP"    ,
+    "EXTPTRSXP"   ,
+    "WEAKREFSXP" , 
+    "RAWSXP"     , 
+    "S4SXP"	     , 
+    "unused"     ,
+    "unused"     ,
+    "unused"     ,
+    "unused"     ,
+    "unused"     ,
+    "unused"     
+    )
+    res$type <- factor(res$type + 1, levels = 1:32, labels = sexp_names);
+    return(res);
+  }
   res <- memCompress(res, type = compress)
   if (is.character(dst)) {
     writeBin(res, dst)
