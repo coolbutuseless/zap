@@ -38,11 +38,9 @@ zap_count <- function(x, opts = list(), ...) {
 #' 
 #' @param verbosity Verbosity level. Default: 0 (no text output).
 #' \describe{
-#'   \item{16}{Print tally of all SEXPs in serialized object. Objects marked with 
-#'         \code{+} are ALTREP. This option prints up to 3 separate tallies;
-#'         the tally of all SEXPs, the tally of ALTREP SEXPs, the tally of 
-#'         SEXPs passed to R's builtin method for serialization}
-#'   \item{32}{Print tree of serialized objects}
+#'   \item{64}{Return a data.frame with information on each SEXP within the object. 
+#'        \code{start} and \code{end} values are the position of the object within
+#'        the \emph{uncompressed} stream}
 #' }
 #' @param transform Enable transformations? Default: TRUE.  Setting to 
 #'        FALSE will disable all transformations.
@@ -135,6 +133,45 @@ zap_opts <- function(transform, verbosity,
 zap_write <- function(x, dst = NULL, compress = Sys.getenv('zap_compress_default'), opts = list(), ...) {
   opts <- modify_list(opts, list(...));
   res <- .Call(write_zap_, x, dst, opts)
+  if (is.data.frame(res)) {
+    # This is the data.frame of object countschar *sexp_nms[32] = {
+   sexp_names <- c(
+     "NILSXP"	    ,
+    "SYMSXP"	    ,
+    "LISTSXP"	    ,
+    "CLOSXP"	    ,
+    "ENVSXP"	    ,
+    "PROMSXP"	    ,
+    "LANGSXP"	    ,
+    "SPECIALSXP"  ,
+    "BUILTINSXP"  ,
+    "CHARSXP"	    ,
+    "LGLSXP"	    ,
+    "unused"      ,
+    "unused"      ,
+    "INTSXP"	    ,
+    "REALSXP"	    ,
+    "CPLXSXP"	    ,
+    "STRSXP"	    ,
+    "DOTSXP"	    ,
+    "ANYSXP"	    ,
+    "VECSXP"	    ,
+    "EXPRSXP"	    ,
+    "BCODESXP"    ,
+    "EXTPTRSXP"   ,
+    "WEAKREFSXP" , 
+    "RAWSXP"     , 
+    "S4SXP"	     , 
+    "unused"     ,
+    "unused"     ,
+    "unused"     ,
+    "unused"     ,
+    "unused"     ,
+    "unused"     
+    )
+    res$type <- factor(res$type + 1, levels = 1:32, labels = sexp_names);
+    return(res);
+  }
   res <- memCompress(res, type = compress)
   if (is.character(dst)) {
     writeBin(res, dst)

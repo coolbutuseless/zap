@@ -29,6 +29,8 @@
 #include "io-factor.h"
 #include "io-serialize.h"
 
+#include "utils-df.h"
+
 //   0	NILSXP	NULL ------------------------ Yes
 //   1	SYMSXP	symbols --------------------- Yes
 //   2	LISTSXP	pairlists ------------------- Yes                   
@@ -120,6 +122,7 @@ void read_attrs(ctx_t *ctx, SEXP obj_) {
 // from ctx.c
 extern char *sexp_nms[32];
 
+extern size_t get_position(void *user_data);
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Write any SEXP object 
@@ -127,18 +130,18 @@ extern char *sexp_nms[32];
 void write_sexp(ctx_t *ctx, SEXP x_) {
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Generate tree output if user requested
+  // Track objects 
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ctx->depth++;
-  if (ctx->opts->verbosity & ZAP_VERB_TREE) {
-    for (int i = 0; i < ctx->depth; i++) {
-      Rprintf("  ");
-    }
-    Rprintf("%s%s\n", 
-            sexp_nms[TYPEOF(x_) &0x1f],
-            ALTREP(x_) ? " +" : ""
-    );
+  bool used_rserialize = false;
+  int start;
+  int obj_count;
+  
+  if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
+    ctx->depth++;
+    start = (int)get_position(ctx->user_data);
+    obj_count = (int)ctx->obj_count++;
   }
+  
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Keep a tally of the types seen (for verbose tally output)
@@ -149,9 +152,6 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
   // For ALTREP just serialize the whole object
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (ALTREP(x_)) {
-    if (ctx->opts->verbosity & ZAP_VERB_TALLY) {
-      ctx->tally_altrep[TYPEOF(x_) & 0x1f]++;
-    }
     write_rserialize(ctx, x_);
     
     ctx->depth--;
@@ -220,9 +220,7 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
       // For any SEXP which is not handled above e.g. BCODESXP, just
       // use R's serialization.  Eventually it'd be good to handle all
       // SEXPs in zap
-      if (ctx->opts->verbosity & ZAP_VERB_TALLY) {
-        ctx->tally_serial[TYPEOF(x_) & 0x1f]++;
-      }
+      used_rserialize = true;
       write_rserialize(ctx, x_);
       possibly_has_attrs = false;
     }
@@ -238,7 +236,22 @@ void write_sexp(ctx_t *ctx, SEXP x_) {
     write_attrs(ctx, x_);
   }
   
-  ctx->depth--;
+  if (ctx->opts->verbosity & ZAP_VERBOSITY_OBJDF) {
+    
+    SEXP objdf_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY);
+    
+    int end = (int)get_position(ctx->user_data);
+    objdf_add_row(objdf_, obj_count, ctx->depth, TYPEOF(x_), start, 
+                  end, ALTREP(x_), used_rserialize);
+    
+    ctx->depth--;
+    if (ctx->obj_count >= ctx->obj_capacity) {
+      df_grow(objdf_);
+      ctx->obj_capacity *= 2;
+    }
+  }
+  
+  
 }
 
 

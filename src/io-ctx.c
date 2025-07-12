@@ -14,7 +14,7 @@
 #include <Rdefines.h>
 
 #include "io-ctx.h"
-
+#include "utils-df.h"
 
 //===========================================================================
 // Parse the R list of options into the 'opts_t' options struct
@@ -349,7 +349,7 @@ ctx_t *create_ctx(opts_t *opts) {
   //  - Possibility to extend this to VECSXP objects so that self-referential
   //    lists can be more effectively serialized.
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ctx->cache = PROTECT(Rf_allocVector(VECSXP, 2));
+  ctx->cache = PROTECT(Rf_allocVector(VECSXP, 3));
   R_PreserveObject(ctx->cache);
   UNPROTECT(1);
   
@@ -371,6 +371,36 @@ ctx_t *create_ctx(opts_t *opts) {
   SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP, vecsxp_cache_);
   UNPROTECT(1);
   
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // A data.frame for tracking SEXP types and sizes
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (opts->verbosity & ZAP_VERBOSITY_OBJDF) {
+    ctx->obj_count    = 0;
+    ctx->obj_capacity = 10;
+    SEXP depth_   = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP type_    = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP start_   = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP end_     = PROTECT(Rf_allocVector(INTSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP altrep_  = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)ctx->obj_capacity));
+    SEXP rserial_ = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t)ctx->obj_capacity));
+    memset(INTEGER(depth_)  , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(type_)   , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(start_)  , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(end_)    , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(altrep_) , 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(rserial_), 0, ctx->obj_capacity * sizeof(int));
+    SEXP objs_ = PROTECT(create_named_list(
+      6, 
+      "depth"     , depth_,
+      "type"      , type_,
+      "start"     , start_,
+      "end"       , end_,
+      "altrep"    , altrep_,
+      "rserialize", rserial_
+    ));
+    SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY, objs_);
+    UNPROTECT(7);
+  }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Hashmap for ENVSXP
@@ -434,10 +464,6 @@ ctx_t *create_unserialize_ctx(void *user_data,
 void ctx_destroy(ctx_t *ctx) {
   if (ctx == NULL) return;
   
-  if ((ctx->opts != NULL) && (ctx->opts->verbosity & ZAP_VERB_TALLY)) {
-    dump_tally(ctx);
-  }
-  
   for (int i = 0; i < CTX_NBUFS; i++) {
     free(ctx->buf[i]);
   }
@@ -497,56 +523,6 @@ char *sexp_nms[32] = {
   "unused"     ,
   "unused"     
 };
-
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Dump three tallies to screen
-//  - all SEXPs
-//  - ALTREPs
-//  - SEXPs which were handled with R's serialization framework
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void dump_tally(ctx_t *ctx) {
-  
-  bool has_values = false;
-  for (int i = 0; i < 32; i++) {
-    has_values |= (ctx->tally_sexp[i] > 0);
-  }
-  if (has_values) {
-    Rprintf("SEXP\n");
-    for (int i = 0; i < 32; i++) {
-      if (ctx->tally_sexp[i] > 0) {
-        Rprintf("    %-13s %3i\n", sexp_nms[i], ctx->tally_sexp[i]);
-      }
-    }
-  }
-  
-  has_values = false;
-  for (int i = 0; i < 32; i++) {
-    has_values |= (ctx->tally_altrep[i] > 0);
-  }
-  if (has_values) {
-    Rprintf("ALTREP\n");
-    for (int i = 0; i < 32; i++) {
-      if (ctx->tally_altrep[i] > 0) {
-        Rprintf("    %-13s %3i\n", sexp_nms[i], ctx->tally_altrep[i]);
-      }
-    }
-  }
-  
-  has_values = false;
-  for (int i = 0; i < 32; i++) {
-    has_values |= (ctx->tally_serial[i] > 0);
-  }
-  if (has_values) {
-    Rprintf("RSerialize\n");
-    for (int i = 0; i < 32; i++) {
-      if (ctx->tally_serial[i] > 0) {
-        Rprintf("    %-13s %3i\n", sexp_nms[i], ctx->tally_serial[i]);
-      }
-    }
-  }
-}
-
 
 
 

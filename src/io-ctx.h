@@ -32,8 +32,7 @@
 //    TALLY outputs a tally at the end of the serialization
 //    TRE   outputs an indented tree of all SEXPs as they are written
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#define ZAP_VERB_TALLY 16
-#define ZAP_VERB_TREE  32
+#define ZAP_VERBOSITY_OBJDF  64
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,7 +64,7 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #define ZAP_CACHE_ENVSXP  0
 #define ZAP_CACHE_VECSXP  1
-
+#define ZAP_CACHE_TALLY   2
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // All the user specified options
@@ -100,27 +99,35 @@ typedef struct {
   uint8_t *buf[CTX_NBUFS];
   size_t bufsize[CTX_NBUFS];
   
-  // Storage for environments seen during serialization so that references
-  // can be used
+  // Global cache for storing SEXP objects which are "held" during the
+  // serialization.
+  // This is just a VECSXP with elements
+  // ZAP_CACHE_ENVSXP  0 for a VECSXP of cached environments
+  // ZAP_CACHE_VECSXP  1 for a VECSXP of cached VECSXPs
+  // ZAP_CACHE_TALLY   2 a data.frame of object tallies
   SEXP cache;
   
+  // ZAP_CACHE_ENVSXP
   R_xlen_t Nenv;
   mph_t *envsxp_hashmap;
 
+  // ZAP_CACHE_VECSXP
   R_xlen_t Nvecsxp;
   mph_t *vecsxp_hashmap;
   
   // user supplied data passed to callbacks
-  // the two primary callbacks used to read/write data
+  // plus the two callbacks used to read/write data
   void *user_data; 
-  void    (*write)     (void *user_data, void *buf, size_t len);
-  void    (*read)      (void *user_data, void *buf, size_t len);
+  void (*write) (void *user_data, void *buf, size_t len);
+  void (*read)  (void *user_data, void *buf, size_t len);
   
   // Storage and tracking for verbose output
   int depth;            // tracking depth for tree printing
   int tally_sexp  [32]; // Vanilla SEXP objects
   int tally_altrep[32]; // ALTREP objects
   int tally_serial[32]; // SEXP types which were serialized by the internal serialization
+  size_t obj_count;  
+  size_t obj_capacity;
   
   // User options
   opts_t *opts;
@@ -184,7 +191,6 @@ uint8_t read_uint8(ctx_t *ctx);
 // For read_len()/write_len()
 #include "utils-varint.h"
 
-void dump_tally(ctx_t *ctx);
 
 
 

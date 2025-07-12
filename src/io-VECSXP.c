@@ -127,9 +127,9 @@ SEXP read_VECSXP_raw(ctx_t *ctx) {
 // Read a standard R list
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SEXP read_VECSXP_reference(ctx_t *ctx) {
-  uint64_t hash_idx = (R_xlen_t)read_len(ctx);
+  uint64_t hash_idx = read_len(ctx);
   SEXP vecsxp_list_ = VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP);
-  return VECTOR_ELT(vecsxp_list_, hash_idx);
+  return VECTOR_ELT(vecsxp_list_, (R_xlen_t)hash_idx);
 }
 
 
