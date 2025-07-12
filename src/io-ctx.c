@@ -14,7 +14,7 @@
 #include <Rdefines.h>
 
 #include "io-ctx.h"
-
+#include "utils-df.h"
 
 //===========================================================================
 // Parse the R list of options into the 'opts_t' options struct
@@ -349,7 +349,7 @@ ctx_t *create_ctx(opts_t *opts) {
   //  - Possibility to extend this to VECSXP objects so that self-referential
   //    lists can be more effectively serialized.
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ctx->cache = PROTECT(Rf_allocVector(VECSXP, 2));
+  ctx->cache = PROTECT(Rf_allocVector(VECSXP, 3));
   R_PreserveObject(ctx->cache);
   UNPROTECT(1);
   
@@ -371,6 +371,24 @@ ctx_t *create_ctx(opts_t *opts) {
   SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_VECSXP, vecsxp_cache_);
   UNPROTECT(1);
   
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // A data.frame for tracking SEXP types and sizes
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (opts->verbosity & 64) {
+    ctx->obj_count    = 0;
+    ctx->obj_capacity = 10;
+    SEXP obj_type_ = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
+    SEXP obj_loc_  = PROTECT(Rf_allocVector(INTSXP, ctx->obj_capacity));
+    memset(INTEGER(obj_type_), 0, ctx->obj_capacity * sizeof(int));
+    memset(INTEGER(obj_loc_) , 0, ctx->obj_capacity * sizeof(int));
+    SEXP objs_ = PROTECT(create_named_list(
+      2, 
+      "type", obj_type_,
+      "loc" , obj_loc_
+    ));
+    SET_VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY, objs_);
+    UNPROTECT(3);
+  }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Hashmap for ENVSXP

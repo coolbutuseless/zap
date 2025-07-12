@@ -14,6 +14,7 @@
 #include "io-ctx.h"
 #include "io-core.h"
 
+#include "utils-df.h"
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -167,7 +168,13 @@ SEXP write_zap_(SEXP obj_, SEXP dst_, SEXP opts_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // - tidy memory
   // - return raw vector to R
+  // - If (verbosity & 64) then return the tally structure, not the data!
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (ctx->opts->verbosity & 64) {
+    res_ = PROTECT(VECTOR_ELT(ctx->cache, ZAP_CACHE_TALLY)); nprotect++;
+    set_df_attributes(res_);
+  }
+  
   ctx_destroy(ctx);
   free(buffer->data);
   free(buffer);

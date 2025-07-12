@@ -135,6 +135,7 @@ zap_opts <- function(transform, verbosity,
 zap_write <- function(x, dst = NULL, compress = Sys.getenv('zap_compress_default'), opts = list(), ...) {
   opts <- modify_list(opts, list(...));
   res <- .Call(write_zap_, x, dst, opts)
+  if (is.data.frame(res)) return(res) # Debug output is in a data.frame
   res <- memCompress(res, type = compress)
   if (is.character(dst)) {
     writeBin(res, dst)
