@@ -251,9 +251,81 @@ SEXP read_STRSXP_mega(ctx_t *ctx) {
 #define BUF_NA_PACKED    0
 #define BUF_RAW          1
 #define BUF_COMP         2
+#define NUNIQ_MAX 4
 
 void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Default to ZAP_STR_MEGA if the string is short
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  size_t len = (size_t)Rf_length(x_);
+  // if (len == 0 || len < 32) {
+  //   write_STRSXP_mega(ctx, x_);
+  //   return;
+  // }
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Find unique strings
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  char *dict_word[NUNIQ_MAX] = { 0 };
+  int nuniq = 0;
+  uint32_t *idx = malloc(len * sizeof(uint32_t));
+  if (idx == NULL) Rf_error("write_STRSXP_dict(): Failed 'idx' allocation");
+  bool dict_works = true;
+  
+  for (int i = 0; i < len; i++) {
+    SEXP chr_ = STRING_ELT(x_, i);
+    const char *chr = CHAR(chr_);
+    
+    // Search for this word in the dictionary
+    bool found = false;
+    int j = 0;
+    for (; j < nuniq; j++) {
+      if (strcmp(chr, dict_word[j]) == 0) {
+        found = true;
+        break;
+      }
+    }
+    
+    // If word was in dictionary, use the index
+    if (found) {
+      // Rprintf("good ...\n");
+      idx[i] = j;
+    } else if (nuniq >= NUNIQ_MAX) {
+      // too many unique values for dictionary encoding
+      // Rprintf("exceeded ...\n");
+      dict_works = false;
+      break;
+    } else {
+      // Add this string to the dictionary
+      // Rprintf("add ...\n");
+      idx[i] = nuniq;
+      dict_word[nuniq] = calloc(1, strlen(chr) + 1);
+      if (dict_word[nuniq] == NULL) Rf_error("'dict_word' allocation error");
+      strcpy(dict_word[nuniq], chr);
+      nuniq++;
+    }
+    
+  }
+  
+  Rprintf("DICT [%i].  N = %i\n", dict_works, nuniq);
+  if (dict_works) {
+    for (int i = 0; i < nuniq; i++) {
+      Rprintf("%s, ", dict_word[i]);
+    }
+    Rprintf("\n");
+  }
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // If num unique words > NUNIQ_MAX, then perform ZAP_STR_MEGA instaed
+  // Tidy up the dictionary allocation
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  free(idx);
+  for (int i = 0; i < NUNIQ_MAX; i++) {
+    free(dict_word[i]);
+  }
+  
+
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Write:
   //  * [1] SEXP
@@ -262,7 +334,6 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   write_uint8(ctx, STRSXP);
   write_uint8(ctx, ZAP_STR_DICT);
   
-  size_t len = (size_t)Rf_length(x_);
   write_len(ctx, len);
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

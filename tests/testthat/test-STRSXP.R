@@ -63,24 +63,23 @@ test_that("results identical to input - raw", {
 
 if (FALSE) {
   
-  nms <- rownames(mtcars)
+  nms <- rownames(mtcars)[1:4]
   
-  for (i in c(seq_len(32), 64, 128, 256, 512, 1024)) {
+  for (i in c(32, 64, 128, 256, 512, 1024)) {
     set.seed(1)
     ref <- sample(nms, i, TRUE)
     l1 <- zap_write(ref, str = 'mega', compress = 'none') |> length()
     l2 <- zap_write(ref, str = 'dict', compress = 'none') |> length()
-    cat(sprintf("% 5i % 7i % 7i\n", i, l1, l2))
+    
+    l1c <- zap_write(ref, str = 'mega', compress = 'zstd') |> length()
+    l2c <- zap_write(ref, str = 'dict', compress = 'zstd') |> length()
+    
+    cat(sprintf("% 5i % 7i % 7i % 7i % 7i\n", i, l1, l2, l1c, l2c))
   }  
   
-  for (i in c(seq_len(32), 64, 128, 256, 512, 1024)) {
-    set.seed(1)
-    ref <- sample(nms, i, TRUE)
-    l1 <- zap_write(ref, str = 'mega', compress = 'zstd') |> length()
-    l2 <- zap_write(ref, str = 'dict', compress = 'zstd') |> length()
-    cat(sprintf("% 5i % 7i % 7i\n", i, l1, l2))
-  }  
   
+  zap_write(c('hello', 'there'), str = 'mega')
+  zap_write(c('hello', 'there'), str = 'dict')
   
   
 }
