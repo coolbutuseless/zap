@@ -58,3 +58,33 @@ test_that("results identical to input - raw", {
     expect_identical(result, ref)
   }
 })
+
+
+
+if (FALSE) {
+  
+  for (i in c(seq_len(32), 64, 128, 256, 512, 1024)) {
+    ref <- rep('aaa', i)
+    l1 <- zap_write(ref, str = 'mega', compress = 'none') |> length()
+    l2 <- zap_write(ref, str = 'dict', compress = 'none') |> length()
+    cat(sprintf("% 5i % 5i % 5i\n", i, l1, l2))
+  }  
+  
+  for (i in c(seq_len(32), 64, 128, 256, 512, 1024)) {
+    ref <- rep('aaa', i)
+    l1 <- zap_write(ref, str = 'mega', compress = 'zstd') |> length()
+    l2 <- zap_write(ref, str = 'dict', compress = 'zstd') |> length()
+    cat(sprintf("% 5i % 5i % 5i\n", i, l1, l2))
+  }  
+  
+  
+  
+}
+
+
+
+
+
+
+
+
