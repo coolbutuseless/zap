@@ -16,7 +16,7 @@ Description: Quickly serialize R objects with high comopression using a custom
     in <doi:10.1145/3626717>.
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Depends:
     R (>= 4.5.0)
 Suggests: 

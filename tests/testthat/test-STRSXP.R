@@ -47,3 +47,14 @@ test_that("corner caseworks", {
 })
 
 
+
+
+test_that("results identical to input - raw", {
+  ref <- c("", "a", "ab", "abc")
+  
+  for (method in c('raw', 'mega', 'dict')) {
+    enc <- zap_write(ref, str = method)
+    result <- zap_read(enc)
+    expect_identical(result, ref)
+  }
+})

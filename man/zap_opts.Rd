@@ -64,6 +64,8 @@ FALSE will disable all transformations.}
 \describe{
   \item{\code{raw}}{Raw. No transformation}
   \item{\code{mega}}{Concatenate all strings.  Length implicitly encoded by null bytes in strings}
+  \item{\code{dict}}{Use unique strings within the vector as a dictionary, and 
+        encode strings as integer indexes into the dictionary}
 }}
 
 \item{list}{transformation method for lists (and data.frames).  Default: 'raw'

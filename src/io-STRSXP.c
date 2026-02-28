@@ -173,7 +173,7 @@ void write_STRSXP_mega(ctx_t *ctx, SEXP x_) {
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
+// read MEGA
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SEXP read_STRSXP_mega(ctx_t *ctx) {
   
@@ -230,6 +230,154 @@ SEXP read_STRSXP_mega(ctx_t *ctx) {
 
 
 
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Dictionary lookup
+//
+// When there are only a few distinct elements in the string vector,
+// then encode the unique strings as a dictionary, and encode the 
+// string vector as an integer index into the dictionary.
+//
+// String vectors with only a small number of distinct elements.
+// Transmit:
+//   * the number of strings
+//   * the bit-packed vector of boolean values indicating "is NA"
+//   * the number of unique strings
+//   * the length of the dictionary
+//   * the cumulative offsets and lengths of the strings in the dictionary
+//   * the dictionary of unique strings
+//   * a vector of integers with the index of each string in the dictionary
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#define BUF_NA_PACKED    0
+#define BUF_RAW          1
+#define BUF_COMP         2
+
+void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Write:
+  //  * [1] SEXP
+  //  * [v] Number of strings
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  write_uint8(ctx, STRSXP);
+  write_uint8(ctx, ZAP_STR_DICT);
+  
+  size_t len = (size_t)Rf_length(x_);
+  write_len(ctx, len);
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Check for empty vector and return early
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (len == 0) return;
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Find lengths of all strings. (Including NULL byte)
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  uint64_t total_chars = 0;
+  for (int i = 0; i < len; i++) {
+    total_chars += ((uint64_t)Rf_length(STRING_ELT(x_, i)) + 1); // count zero bytes
+  }
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // length of mega should be represented by 8 bytes possibly?
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (total_chars > (1ULL << 32)) Rf_error("write_STRSXP(): string too long");
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Total Chars
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  write_len(ctx, total_chars);
+  if (total_chars == len) return; // all empty strings
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Create the auxilliary bitstream of NA locations
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  size_t packed_len = pack_na_str(ctx, BUF_NA_PACKED, x_);
+  write_buf(ctx, BUF_NA_PACKED, packed_len);
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Allocate storage space for the entire long string
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  prepare_buf(ctx, BUF_RAW, total_chars + 1);
+  char *p = (char *)ctx->buf[BUF_RAW];
+  
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Create the mega concatenated string
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  for (int i = 0; i < len; i++) {
+    SEXP chr_ = STRING_ELT(x_, i);
+    unsigned long slen = (unsigned long)Rf_length(chr_) + 1;
+    strncpy(p, CHAR(chr_), slen);
+    p += slen;
+  }
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Output character data
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  write_buf(ctx, BUF_RAW, (size_t)total_chars);
+}
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Read STRSXP encoded as a dictionary lookup
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SEXP read_STRSXP_dict(ctx_t *ctx) {
+  
+  size_t len = read_len(ctx);
+  SEXP obj_ = PROTECT(Rf_allocVector(STRSXP, (R_xlen_t)len)); 
+  
+  if (len == 0) {
+    UNPROTECT(1);
+    return obj_;
+  }
+  
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Character data
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  size_t total_chars = read_len(ctx);
+  if (total_chars == len) {
+    // Character vector of empty strings
+    UNPROTECT(1);
+    return obj_;
+  }
+  
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // NA locations
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  read_buf(ctx, BUF_NA_PACKED);
+  
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Read compressed char data
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  read_buf(ctx, BUF_RAW);
+  char *mega = (char *)ctx->buf[BUF_RAW];
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Partition the mega string into individual strings
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  for (int i = 0; i < len; i++) {
+    SET_STRING_ELT(obj_, i, Rf_mkChar(mega));
+    mega += strlen(mega) + 1;
+  }
+  
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Set NA values using the auxilliary NA bistream
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  unpack_na_str(ctx, BUF_NA_PACKED, obj_, len);
+  
+  
+  UNPROTECT(1);
+  return obj_;
+}
+
+
+
+
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //   ###                       
 //  #   #                      
@@ -257,6 +405,9 @@ void write_STRSXP(ctx_t *ctx, SEXP x_) {
   case ZAP_STR_MEGA:
     write_STRSXP_mega(ctx, x_);
     break;
+  case ZAP_STR_DICT:
+    write_STRSXP_dict(ctx, x_);
+    break;
   default:
     Rf_error("write_STRSXP() str transform unknown %i", ctx->opts->str_transform);
   }
@@ -278,6 +429,9 @@ SEXP read_STRSXP(ctx_t *ctx) {
     break;
   case ZAP_STR_MEGA:
     return read_STRSXP_mega(ctx);
+    break;
+  case ZAP_STR_DICT:
+    return read_STRSXP_dict(ctx);
     break;
   default:
     Rf_error("read_STRSXP() str transform unknown %i", method);

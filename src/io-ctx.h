@@ -55,6 +55,7 @@
 
 #define ZAP_STR_RAW        0  // Uncompressed
 #define ZAP_STR_MEGA       1  // Mega string
+#define ZAP_STR_DICT       2  // Dict lookup when len(unique(str)) << len(str)
 
 #define ZAP_VEC_RAW        0  // Write all VECXXP as they are encountered
 #define ZAP_VEC_REF        1  // Cache VECSXPs and write references for duplicates

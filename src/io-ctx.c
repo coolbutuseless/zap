@@ -163,6 +163,8 @@ opts_t *parse_options(SEXP opts_) {
         opts->str_transform = ZAP_STR_RAW;
       } else if (strcmp(val, "mega") == 0) {
         opts->str_transform = ZAP_STR_MEGA;
+      } else if (strcmp(val, "dict") == 0) {
+        opts->str_transform = ZAP_STR_DICT;
       } else {
         Rf_warning("Option not understood: str = '%s'. Using 'mega'", val);
         opts->str_transform = ZAP_STR_MEGA;
