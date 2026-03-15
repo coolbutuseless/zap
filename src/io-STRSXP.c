@@ -18,7 +18,7 @@
 #include "io-STRSXP.h"
 #include "utils-packing-1bit.h"
 
-
+#include "mph.h"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //   ####                
@@ -252,7 +252,7 @@ SEXP read_STRSXP_mega(ctx_t *ctx) {
 #define BUF_RAW          1
 #define BUF_COMP         2
 
-#define NUNIQ_MAX        4
+#define MAX_DICT_SIZE    4
 
 void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   
@@ -266,56 +266,47 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   // }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Find unique strings
+  // Find unique strings using a hashmap
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  char *dict_word[NUNIQ_MAX] = { 0 };
-  int nuniq = 0;
-  uint32_t *idx = malloc(len * sizeof(uint32_t));
-  if (idx == NULL) Rf_error("write_STRSXP_dict(): Failed 'idx' allocation");
-  bool dict_works = true;
+  size_t capacity = MAX_DICT_SIZE * 4;
+  mph_t *mph = mph_init(capacity);
+  if (mph == NULL) {
+    Rf_error("write_STRSXP_dict_(): Couldn't initialise hashmap");
+  }
   
   for (int i = 0; i < len; i++) {
     SEXP chr_ = STRING_ELT(x_, i);
     const char *chr = CHAR(chr_);
-    
-    // Search for this word in the dictionary
-    bool found = false;
-    int j = 0;
-    for (; j < nuniq; j++) {
-      if (strcmp(chr, dict_word[j]) == 0) {
-        found = true;
-        break;
-      }
-    }
-    
-    // If word was in dictionary, use the index
-    if (found) {
-      // Rprintf("good ...\n");
-      idx[i] = j;
-    } else if (nuniq >= NUNIQ_MAX) {
-      // too many unique values for dictionary encoding
-      // Rprintf("exceeded ...\n");
-      dict_works = false;
+    mph_get_set(mph, (uint8_t *)chr, strlen(chr));
+    if (mph->nitems > MAX_DICT_SIZE) {
+      Rprintf("Exceeded max dict size (%i) at idx = %i\n", 
+              MAX_DICT_SIZE, i);
       break;
-    } else {
-      // Add this string to the dictionary
-      // Rprintf("add ...\n");
-      idx[i] = nuniq;
-      dict_word[nuniq] = calloc(1, strlen(chr) + 1);
-      if (dict_word[nuniq] == NULL) Rf_error("'dict_word' allocation error");
-      strcpy(dict_word[nuniq], chr);
-      nuniq++;
     }
-    
   }
   
-  Rprintf("DICT [%i].  N = %i\n", dict_works, nuniq);
-  if (dict_works) {
-    for (int i = 0; i < nuniq; i++) {
-      Rprintf("%s, ", dict_word[i]);
+  bool can_use_dict = mph->nitems <= MAX_DICT_SIZE;
+  Rprintf("N unique strings: %i (dict = %s)\n", 
+          (int)mph->nitems, 
+          can_use_dict ? "Yes" : "No"
+          );
+  
+  if (can_use_dict) {
+    Rprintf("Dump\n");
+    int total_len = 0;
+    for (int i = 0; i < mph->capacity; i++) {
+      bucket_t b = mph->bucket[i];
+      if (b.key != NULL) {
+        Rprintf("[%i] %s\n", i, b.key);
+        // total_len++;
+        total_len += strlen((char *)b.key);
+      }
     }
-    Rprintf("\n");
+    Rprintf("TOTAL: %i\n", total_len);
   }
+  
+  
+  mph_destroy(mph);
   
   // If dict didn't work, encode ZAP_STR_MEGA
   // If dict does work
@@ -327,16 +318,6 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   //  - mega string of dict words
   //  - N integers (packed indices)
   //  - N booleans (for NA)
-  
-  
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // If num unique words > NUNIQ_MAX, then perform ZAP_STR_MEGA instaed
-  // Tidy up the dictionary allocation
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  free(idx);
-  for (int i = 0; i < NUNIQ_MAX; i++) {
-    free(dict_word[i]);
-  }
   
 
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
