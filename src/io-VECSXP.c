@@ -52,7 +52,7 @@ void write_VECSXP_reference(ctx_t *ctx, SEXP x_) {
   // Has this VECSXP been seen in the hashmap cache?
   // If so, just return an VECSXP reference
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  int hash_idx = mph_lookup(ctx->vecsxp_hashmap, (uint8_t *)&x_, 8);
+  int hash_idx = mph_get(ctx->vecsxp_hashmap, (uint8_t *)&x_, 8);
   if (hash_idx >= 0) {
     // Found the VECSXP in the cache
     write_uint8(ctx, VECSXP | 0x80); // set top bit to indicate reference 
@@ -63,12 +63,12 @@ void write_VECSXP_reference(ctx_t *ctx, SEXP x_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Not already seen, so add it to the hashmap
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  hash_idx = mph_add(ctx->vecsxp_hashmap, (uint8_t *)&x_, 8);
-  if (hash_idx != ctx->Nvecsxp) {
-    Rf_error("write_VECSXP() hashmap sync error %i != %i",
-             hash_idx, (int)ctx->Nvecsxp);
-  }
+  bool success = mph_set(ctx->vecsxp_hashmap, (uint8_t *)&x_, 8);
   ctx->Nvecsxp++;
+  if (!success || ctx->vecsxp_hashmap->nitems != ctx->Nvecsxp) {
+    Rf_error("write_VECSXP() hashmap sync error %i != %i",
+             (int)ctx->vecsxp_hashmap->nitems, (int)ctx->Nvecsxp);
+  }
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Just write it as a 'raw' the first time it is seen

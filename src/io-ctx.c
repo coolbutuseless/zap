@@ -475,11 +475,11 @@ void ctx_destroy(ctx_t *ctx) {
   
   if (ctx->opts->verbosity == 16) {
     Rprintf("Env Hashmap ------------------\nTotal Items = %i\n", 
-            (int)ctx->envsxp_hashmap->total_items);
-    for (int i = 0; i < ctx->envsxp_hashmap->nbuckets; i++) {
+            (int)ctx->envsxp_hashmap->nitems);
+    for (int i = 0; i < ctx->envsxp_hashmap->capacity; i++) {
       bucket_t bucket = ctx->envsxp_hashmap->bucket[i];
-      if (bucket.nitems > 0) {
-        Rprintf("[%3i] %i\n", i, (int)bucket.nitems);
+      if (bucket.key != NULL) {
+        Rprintf("[%3i]\n", i);
       }
     }
   }
