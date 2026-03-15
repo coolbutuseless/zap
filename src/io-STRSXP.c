@@ -251,7 +251,8 @@ SEXP read_STRSXP_mega(ctx_t *ctx) {
 #define BUF_NA_PACKED    0
 #define BUF_RAW          1
 #define BUF_COMP         2
-#define NUNIQ_MAX 4
+
+#define NUNIQ_MAX        4
 
 void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   
@@ -315,6 +316,18 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
     }
     Rprintf("\n");
   }
+  
+  // If dict didn't work, encode ZAP_STR_MEGA
+  // If dict does work
+  //  - magic byte
+  //  - N strings
+  //  - N dict words
+  //  - total chars for dict words
+  //  - length of each dict word
+  //  - mega string of dict words
+  //  - N integers (packed indices)
+  //  - N booleans (for NA)
+  
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // If num unique words > NUNIQ_MAX, then perform ZAP_STR_MEGA instaed
