@@ -277,7 +277,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   for (int i = 0; i < len; i++) {
     SEXP chr_ = STRING_ELT(x_, i);
     const char *chr = CHAR(chr_);
-    mph_get_set(mph, (uint8_t *)chr, strlen(chr));
+    mph_get_set(mph, (uint8_t *)chr, strlen(chr) + 1); // Keep NULL terminator
     if (mph->nitems > MAX_DICT_SIZE) {
       Rprintf("Exceeded max dict size (%i) at idx = %i\n", 
               MAX_DICT_SIZE, i);
