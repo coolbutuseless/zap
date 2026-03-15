@@ -139,11 +139,11 @@ int32_t mph_get_set(mph_t *mph, uint8_t *key, size_t len) {
   mph->bucket[idx].value = value;
   mph->bucket[idx].hash  = hash;
   mph->bucket[idx].len   = len;
-  mph->bucket[idx].key   = malloc(len);
+  mph->bucket[idx].key   = malloc(len + 1); // keep null-terminator
   if (mph->bucket[idx].key == NULL) {
     return MPH_ERROR;
   }
-  memcpy(mph->bucket[idx].key, key, len);
+  memcpy(mph->bucket[idx].key, key, len + 1); // keep null-terminator
   
   
   return value;
