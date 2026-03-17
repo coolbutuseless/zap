@@ -95,7 +95,10 @@ void write_attrs(ctx_t *ctx, SEXP x_) {
   if (len > 0) {
     write_sexp(ctx, nms_);
     for (size_t i = 0; i < len; i++) {
-      write_sexp(ctx, Rf_getAttrib(x_, Rf_install(CHAR(STRING_ELT(nms_, i)))));
+      SEXP nm_  = PROTECT(Rf_install(CHAR(STRING_ELT(nms_, i))));
+      SEXP att_ = PROTECT(Rf_getAttrib(x_, nm_));
+      write_sexp(ctx, att_);
+      UNPROTECT(2);
     }
   }
   UNPROTECT(1);
