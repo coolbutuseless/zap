@@ -273,11 +273,17 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   if (mph == NULL) {
     Rf_error("write_STRSXP_dict_(): Couldn't initialise hashmap");
   }
+
+  // Prep room for the index
+  int32_t *dict_idx = malloc(len * sizeof(int32_t));
+  if (dict_idx == NULL) Rf_error("write_STRSXP_dict_(): Couldn't initialise integer idx");
   
   for (int i = 0; i < len; i++) {
     SEXP chr_ = STRING_ELT(x_, i);
     const char *chr = CHAR(chr_);
-    mph_get_set(mph, (uint8_t *)chr, strlen(chr) + 1); // Keep NULL terminator
+    dict_idx[i] = mph_get_set(mph, (uint8_t *)chr, strlen(chr) + 1); // Keep NULL terminator
+    if (dict_idx[i] < 0) Rf_error("write_STRSXP_dict_() mph_get_set failed");
+
     if (mph->nitems > MAX_DICT_SIZE) {
       Rprintf("Exceeded max dict size (%i) at idx = %i\n", 
               MAX_DICT_SIZE, i);
@@ -296,6 +302,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (!can_use_dict) {
     Rprintf("STRSXP: Using MEGA string\n");
+    free(dict_idx);
     mph_destroy(mph);
     write_STRSXP_mega(ctx, x_);
     return;
@@ -315,36 +322,27 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
     }
   }
   Rprintf("TOTAL: %i\n", (int)total_chars);
+
+  for (int i = 0; i < len; i++) {
+    Rprintf("[%i] %i\n", i, dict_idx[i]);
+  }
   
-  
-  mph_destroy(mph);
-  
-  // If dict didn't work, encode ZAP_STR_MEGA
-  // If dict does work
-  //  - magic byte
-  //  - N strings
-  //  - N dict words
-  //  - total chars for dict words
-  //  - length of each dict word
-  //  - mega string of dict words
-  //  - N integers (packed indices)
-  //  - N booleans (for NA)
   
 
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Write:
   //  * [1] SEXP
-  //  * [v] Number of strings
+  //  * [1] encoding method
+  //  * [v] number of strings
+  //  * [v] length of mega string (total_chars)
+  //  * [bit] boolean vector of location of NA values
+  //  * [chr] mega string 
+  //  * [int] integer vector
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   write_uint8(ctx, STRSXP);
   write_uint8(ctx, ZAP_STR_DICT);
-  
   write_len(ctx, len);
   
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Check for empty vector and return early
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (len == 0) return;
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Find lengths of all strings. (Including NULL byte)
@@ -392,6 +390,10 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   // Output character data
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   write_buf(ctx, BUF_RAW, (size_t)total_chars);
+
+  
+  free(dict_idx);
+  mph_destroy(mph);
 }
 
 
@@ -400,6 +402,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SEXP read_STRSXP_dict(ctx_t *ctx) {
   
+  Rf_error("read_STRSXP_dict(): not done yet");
   size_t len = read_len(ctx);
   SEXP obj_ = PROTECT(Rf_allocVector(STRSXP, (R_xlen_t)len)); 
   
@@ -445,7 +448,6 @@ SEXP read_STRSXP_dict(ctx_t *ctx) {
   // Set NA values using the auxilliary NA bistream
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   unpack_na_str(ctx, BUF_NA_PACKED, obj_, len);
-  
   
   UNPROTECT(1);
   return obj_;
