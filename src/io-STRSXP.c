@@ -314,11 +314,18 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   Rprintf("STRSXP: Using Dict\n");
   uint64_t total_chars = 0;
+  char **dict = calloc(mph->nitems, sizeof(char *));
+  if (dict == 0) Rf_error("dict allocation error");
+
   for (int i = 0; i < mph->capacity; i++) {
     bucket_t b = mph->bucket[i];
     if (b.key != NULL) {
       Rprintf("[%i] %s\n", i, b.key);
-      total_chars += strlen((char *)b.key) + 1; // count NUL terminator byte
+      total_chars += b.len;
+      
+      dict[b.value] = malloc(b.len);
+      if (dict[b.value] == NULL) Rf_error("dict[] alloc error");
+      strncpy(dict[b.value], (char *)b.key, b.len);
     }
   }
   Rprintf("TOTAL: %i\n", (int)total_chars);
@@ -327,6 +334,23 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
     Rprintf("[%i] %i\n", i, dict_idx[i]);
   }
   
+  prepare_buf(ctx, BUF_RAW, total_chars + 1);
+  char *dictp = (char *)ctx->buf[BUF_RAW];
+  for (int i = 0; i < mph->nitems; i++) {
+    Rprintf("[%i] -> %s\n", i, dict[i]);
+
+    unsigned long slen = (unsigned long)strlen(dict[i]) + 1;
+    Rprintf("slen: %lu\n", slen);
+    strncpy(dictp, dict[i], slen);
+    dictp += slen;  
+  }
+  dictp = (char *)ctx->buf[BUF_RAW];
+
+  for (int i = 0; i < total_chars; i++) {
+    Rprintf("%02x ", dictp[i]);
+  }
+  Rprintf("\n");
+
   
 
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -391,7 +415,10 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   write_buf(ctx, BUF_RAW, (size_t)total_chars);
 
-  
+  for (int i = 0; i < mph->nitems; i++) {
+    free(dict[i]);
+  }  
+  free(dict);
   free(dict_idx);
   mph_destroy(mph);
 }
