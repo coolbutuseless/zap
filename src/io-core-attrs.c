@@ -10,6 +10,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <Rdefines.h>
+#include <Rversion.h>
 
 #include "io-ctx.h"
 #include "io-core.h"
@@ -30,6 +31,7 @@
 #include "io-serialize.h"
 #include "io-core-attrs.h"
 
+#if R_VERSION < R_Version(4, 6, 0)
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Determine the attributes on 'x_' and write them out
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,7 +53,7 @@ void write_attrs(ctx_t *ctx, SEXP x_) {
   
   // Write class
   SEXP cls_ = PROTECT(Rf_getAttrib(x_, R_ClassSymbol));
-  if (Rf_isNull(attrs_)) {
+  if (Rf_isNull(cls_)) {
     write_uint8(ctx, NILSXP);
   } else {
     write_sexp(ctx, cls_);
@@ -81,5 +83,56 @@ void read_attrs(ctx_t *ctx, SEXP obj_) {
 }
 
 
+#else
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Determine the attributes on 'x_' and write them out
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void write_attrs(ctx_t *ctx, SEXP x_) {
+  
+  SEXP nms_ = PROTECT(R_getAttribNames(x_));
+  size_t len = (size_t)Rf_length(nms_);
+  write_len(ctx, len);
+  if (len > 0) {
+    write_sexp(ctx, nms_);
+    for (size_t i = 0; i < len; i++) {
+      write_sexp(ctx, Rf_getAttrib(x_, Rf_install(CHAR(STRING_ELT(nms_, i)))));
+    }
+  }
+  UNPROTECT(1);
 
+  // Write class
+  SEXP cls_ = PROTECT(Rf_getAttrib(x_, R_ClassSymbol));
+  if (Rf_isNull(cls_)) {
+    write_uint8(ctx, NILSXP);
+  } else {
+    write_sexp(ctx, cls_);
+  }
+  UNPROTECT(1);
+}
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Read attributes and assign them onto 'obj_'
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void read_attrs(ctx_t *ctx, SEXP obj_) {
+
+  size_t len = read_len(ctx);
+  if (len > 0) {
+    SEXP nms_ = PROTECT(read_sexp(ctx));
+    for (size_t i = 0; i < len; i++) {
+      SEXP val_ = PROTECT(read_sexp(ctx));
+      SEXP nm_ = PROTECT(Rf_install(CHAR(STRING_ELT(nms_, i))));
+      Rf_setAttrib(obj_, nm_, val_);
+      UNPROTECT(2);
+    }
+    UNPROTECT(1);
+  }
+  
+  // Read class
+  SEXP cls_ = PROTECT(read_sexp(ctx));
+  Rf_setAttrib(obj_, R_ClassSymbol, cls_);
+  UNPROTECT(1);
+}
+
+#endif 
 
