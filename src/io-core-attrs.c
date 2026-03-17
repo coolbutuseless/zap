@@ -46,11 +46,6 @@ void write_attrs(ctx_t *ctx, SEXP x_) {
   }
   UNPROTECT(1);
   
-  // // Write names
-  // SEXP nms_ = PROTECT(Rf_getAttrib(x_, R_NamesSymbol));
-  // write_sexp(ctx, nms_);
-  // UNPROTECT(1);
-  
   // Write class
   SEXP cls_ = PROTECT(Rf_getAttrib(x_, R_ClassSymbol));
   if (Rf_isNull(cls_)) {

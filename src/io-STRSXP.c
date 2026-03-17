@@ -204,7 +204,7 @@ SEXP read_STRSXP_mega(ctx_t *ctx) {
 
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Read compressed char data
+  // Read char data
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   read_buf(ctx, BUF_RAW);
   char *mega = (char *)ctx->buf[BUF_RAW];
@@ -291,19 +291,30 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
           can_use_dict ? "Yes" : "No"
           );
   
-  if (can_use_dict) {
-    Rprintf("Dump\n");
-    int total_len = 0;
-    for (int i = 0; i < mph->capacity; i++) {
-      bucket_t b = mph->bucket[i];
-      if (b.key != NULL) {
-        Rprintf("[%i] %s\n", i, b.key);
-        // total_len++;
-        total_len += strlen((char *)b.key);
-      }
-    }
-    Rprintf("TOTAL: %i\n", total_len);
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // If there are too many unique strings, write as a MEGA string
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (!can_use_dict) {
+    Rprintf("STRSXP: Using MEGA string\n");
+    mph_destroy(mph);
+    write_STRSXP_mega(ctx, x_);
+    return;
   }
+
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Otherwise, we can use a dictionary and encode the character vector as
+  // an integer vector
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  Rprintf("STRSXP: Using Dict\n");
+  uint64_t total_chars = 0;
+  for (int i = 0; i < mph->capacity; i++) {
+    bucket_t b = mph->bucket[i];
+    if (b.key != NULL) {
+      Rprintf("[%i] %s\n", i, b.key);
+      total_chars += strlen((char *)b.key) + 1; // count NUL terminator byte
+    }
+  }
+  Rprintf("TOTAL: %i\n", (int)total_chars);
   
   
   mph_destroy(mph);
@@ -338,7 +349,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Find lengths of all strings. (Including NULL byte)
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  uint64_t total_chars = 0;
+  total_chars = 0;
   for (int i = 0; i < len; i++) {
     total_chars += ((uint64_t)Rf_length(STRING_ELT(x_, i)) + 1); // count zero bytes
   }
