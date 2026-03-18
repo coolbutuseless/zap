@@ -82,8 +82,14 @@ zap_count <- function(x, opts = list(), ...) {
 #'         encode strings as integer indexes into the dictionary}
 #' }
 #' @param int_threshold,lgl_threshold,fct_threshold,dbl_threshold,str_threshold 
+#'        Above this threshold, transformation will be attempted for the different data types.
 #'        Below this threshold, no transformation will be done. All default to
 #'        0, meaning transformation is always attempted.
+#' @param str_dict_len_threshold Dictionary encoding is only attempted for character vectors longer
+#'        than this threshold.  Default: 8.  Below this threshold, 'mega' string encoding
+#'        is used instead.
+#' @param str_dict_uniq_threshold Creating a dictionary encoding of character vectors is only 
+#'        attempted for vectors with (at most) this number of unique strings.  Default: 32
 #' @param dbl_fallback if \code{dbl = 'alp'}, the data is not
 #'        always conducive to this compression scheme and after probing the
 #'        data the code can exit early and try a different method.  
@@ -102,6 +108,8 @@ zap_opts <- function(transform, verbosity,
                      list,
                      lgl_threshold, int_threshold, fct_threshold, 
                      dbl_threshold, str_threshold, 
+                     str_dict_len_threshold,
+                     str_dict_uniq_threshold,
                      dbl_fallback, ...) {
   
   find_args(...)
