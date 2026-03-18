@@ -441,7 +441,9 @@ Factors may be `packed`:
 
 ## Character transformation
 
-Encode a character vector as a `mega` string by writing out:
+### Encode a character vector as a `mega` string 
+
+Write out:
 
 1. The total length of all strings
 2. The concatenation of all the nul-terminated strings (where length is 
@@ -450,6 +452,15 @@ Encode a character vector as a `mega` string by writing out:
    each string).
 
 This approach avoids encoding a separate length for each individual character string.
+
+### Dictionary encoding
+
+Encode the character vector to a factor on-the-fly, and re-create the character vector when reading.
+
+* Calculate a dictionary of all unique strings in the character vector
+* For each string in the original character vector, calculate its index within the dicionary
+* Write out the dictionary and the list of indices
+
 
 ## Floating point transformation
 

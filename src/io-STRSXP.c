@@ -17,6 +17,7 @@
 #include "io-ctx.h"
 #include "io-STRSXP.h"
 #include "utils-packing-1bit.h"
+#include "utils-packing-nbits.h"
 #include "utils-ints.h"
 
 #include "mph.h"
@@ -253,8 +254,9 @@ SEXP read_STRSXP_mega(ctx_t *ctx) {
 #define BUF_DICT         1
 #define BUF_MEGA         2
 #define BUF_IDX          3
+#define BUF_IDX_PACKED   4
 
-#define MAX_DICT_SIZE    4
+#define MAX_DICT_SIZE    32
 
 void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   
@@ -288,23 +290,23 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
     if (dict_idx[i] < 0) Rf_error("write_STRSXP_dict_() mph_get_set failed");
 
     if (mph->nitems > MAX_DICT_SIZE) {
-      Rprintf("Exceeded max dict size (%i) at idx = %i\n", 
-              MAX_DICT_SIZE, i);
+      // Rprintf("Exceeded max dict size (%i) at idx = %i\n", 
+              // MAX_DICT_SIZE, i);
       break;
     }
   }
   
   bool can_use_dict = mph->nitems <= MAX_DICT_SIZE;
-  Rprintf("N unique strings: %i (dict = %s)\n", 
-          (int)mph->nitems, 
-          can_use_dict ? "Yes" : "No"
-          );
+  // Rprintf("N unique strings: %i (dict = %s)\n", 
+  //         (int)mph->nitems, 
+  //         can_use_dict ? "Yes" : "No"
+  //         );
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // If there are too many unique strings, write as a MEGA string
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (!can_use_dict) {
-    Rprintf("STRSXP: Using MEGA string\n");
+    // Rprintf("STRSXP: Using MEGA string\n");
     mph_destroy(mph);
     write_STRSXP_mega(ctx, x_);
     return;
@@ -314,7 +316,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   // Otherwise, we can use a dictionary and encode the character vector as
   // an integer vector
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  Rprintf("STRSXP: Using Dict\n");
+  // Rprintf("STRSXP: Using Dict\n");
   uint64_t total_chars = 0;
 
   prepare_buf(ctx, BUF_DICT, mph->nitems * sizeof(char *));
@@ -323,7 +325,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   for (int i = 0; i < mph->capacity; i++) {
     bucket_t b = mph->bucket[i];
     if (b.key != NULL) {
-      Rprintf("[%i] %s\n", i, b.key);
+      // Rprintf("[%i] %s\n", i, b.key);
       total_chars += b.len;
       
       dict[b.value] = malloc(b.len);
@@ -331,29 +333,29 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
       strncpy(dict[b.value], (char *)b.key, b.len);
     }
   }
-  Rprintf("TOTAL: %i\n", (int)total_chars);
+  // Rprintf("TOTAL: %i\n", (int)total_chars);
 
-  for (int i = 0; i < len; i++) {
-    Rprintf("[%i] %i\n", i, dict_idx[i]);
-  }
+  // for (int i = 0; i < len; i++) {
+  //   Rprintf("[%i] %i\n", i, dict_idx[i]);
+  // }
   
   prepare_buf(ctx, BUF_MEGA, total_chars + 1);
   char *dictp = (char *)ctx->buf[BUF_MEGA];
   for (int i = 0; i < mph->nitems; i++) {
-    Rprintf("[%i] -> %s\n", i, dict[i]);
+    // Rprintf("[%i] -> %s\n", i, dict[i]);
 
     unsigned long slen = (unsigned long)strlen(dict[i]) + 1;
-    Rprintf("slen: %lu\n", slen);
+    // Rprintf("slen: %lu\n", slen);
     strncpy(dictp, dict[i], slen);
     dictp += slen;  
     free(dict[i]);
   }
   dictp = (char *)ctx->buf[BUF_MEGA];
 
-  for (int i = 0; i < total_chars; i++) {
-    Rprintf("%02x ", dictp[i]);
-  }
-  Rprintf("\n");
+  // for (int i = 0; i < total_chars; i++) {
+  //   Rprintf("%02x ", dictp[i]);
+  // }
+  // Rprintf("\n");
 
   
 
@@ -383,7 +385,21 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   write_len(ctx, mph->nitems);
   write_buf(ctx, BUF_MEGA, (size_t)total_chars);
-  write_uint32_buf(ctx, BUF_IDX, len);
+
+
+  // write_uint32_buf(ctx, BUF_IDX, len);
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // How many bits can we pack each element into?
+  // How many container integers are needed?
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  size_t nbits = (size_t)ceil(log2(mph->nitems));
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Pack the integers
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  packed_len = pack_nbits_ptr_buf(ctx, (uint32_t *)ctx->buf[BUF_IDX], BUF_IDX_PACKED, len, nbits);
+  write_buf(ctx, BUF_IDX_PACKED, packed_len);
+
 
   mph_destroy(mph);
 }
@@ -415,6 +431,7 @@ SEXP read_STRSXP_dict(ctx_t *ctx) {
   // Number of chars in mega-string for dictionary
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   size_t total_chars = read_len(ctx);
+  (void)total_chars;
   
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -440,7 +457,27 @@ SEXP read_STRSXP_dict(ctx_t *ctx) {
   }
 
   // Read the dict indices
-  read_uint32_buf(ctx, BUF_IDX);
+  // read_uint32_buf(ctx, BUF_IDX);
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // How many bits are required to encode the dictionary lookup?
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  size_t nbits = (size_t)ceil(log2((double)n_dict_strings));
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Read the compressed data and decompress
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  read_buf(ctx, BUF_IDX_PACKED);
+  
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Unpack the integers
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  unpack_nbits_buf_ptr(
+    ctx, 
+    BUF_IDX_PACKED,                 // source (packed)
+    (uint32_t *)ctx->buf[BUF_IDX],  // dest   (unpacked)
+    len,                            // number of packed ints
+    nbits                           // number of bits per int
+  );
   
   // Allocate the stirngs
   uint32_t *dict_idx = (uint32_t *)ctx->buf[BUF_IDX];
