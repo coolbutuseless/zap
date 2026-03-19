@@ -256,23 +256,26 @@ SEXP read_STRSXP_mega(ctx_t *ctx) {
 #define BUF_IDX          3
 #define BUF_IDX_PACKED   4
 
-#define MAX_DICT_SIZE    32
-
 void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Default to ZAP_STR_MEGA if the string is short
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   size_t len = (size_t)Rf_length(x_);
-  // if (len == 0 || len < 32) {
-  //   write_STRSXP_mega(ctx, x_);
-  //   return;
-  // }
+  if (len <= ctx->opts->str_dict_len_threshold) {
+    write_STRSXP_mega(ctx, x_);
+    return;
+  }
+  
+  uint32_t max_dict_size = (uint32_t)ceil(ctx->opts->str_dict_frac_limit * (double)len);
+  // Rprintf("Max dict size: %.2f * %i = %i\n", ctx->opts->str_dict_frac_limit, (int)len, max_dict_size);
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Find unique strings using a hashmap
+  // Oversize the capacity of the hashmap by a factor of 4 to reduce the 
+  // number of collisons + linear probing
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  size_t capacity = MAX_DICT_SIZE * 4;
+  size_t capacity = max_dict_size * 4;  
   mph_t *mph = mph_init(capacity);
   if (mph == NULL) {
     Rf_error("write_STRSXP_dict_(): Couldn't initialise hashmap");
@@ -289,14 +292,14 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
     dict_idx[i] = mph_get_set(mph, (uint8_t *)chr, strlen(chr) + 1); // Keep NULL terminator
     if (dict_idx[i] < 0) Rf_error("write_STRSXP_dict_() mph_get_set failed");
 
-    if (mph->nitems > MAX_DICT_SIZE) {
+    if (mph->nitems > max_dict_size) {
       // Rprintf("Exceeded max dict size (%i) at idx = %i\n", 
-              // MAX_DICT_SIZE, i);
+              // max_dict_size, i);
       break;
     }
   }
   
-  bool can_use_dict = mph->nitems <= MAX_DICT_SIZE;
+  bool can_use_dict = mph->nitems <= max_dict_size;
   // Rprintf("N unique strings: %i (dict = %s)\n", 
   //         (int)mph->nitems, 
   //         can_use_dict ? "Yes" : "No"
