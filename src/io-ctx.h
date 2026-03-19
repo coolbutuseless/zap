@@ -88,6 +88,9 @@ typedef struct {
   int fct_threshold;
   int dbl_threshold;
   int str_threshold;
+  
+  int str_dict_len_threshold;
+  double str_dict_frac_limit;
 } opts_t;
 
 

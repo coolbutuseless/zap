@@ -88,8 +88,12 @@ zap_count <- function(x, opts = list(), ...) {
 #' @param str_dict_len_threshold Dictionary encoding is only attempted for character vectors longer
 #'        than this threshold.  Default: 8.  Below this threshold, 'mega' string encoding
 #'        is used instead.
-#' @param str_dict_uniq_threshold Creating a dictionary encoding of character vectors is only 
-#'        attempted for vectors with (at most) this number of unique strings.  Default: 32
+#' @param str_dict_frac_limit Creating a dictionary encoding of character vectors is only 
+#'        attempted for vectors with (at most) this fraction of unique strings.  Default: 0.5
+#'        E.g. in a length 12 vector if there are 6-or-fewer unique strings then use
+#'        'dict' coding. Otherwise use 'mega' encoding.  If set to 0, then method
+#'        will always default to 'mega' encoding. If set to 1, then method 
+#'        will always use 'dict' encoding.
 #' @param dbl_fallback if \code{dbl = 'alp'}, the data is not
 #'        always conducive to this compression scheme and after probing the
 #'        data the code can exit early and try a different method.  
@@ -109,7 +113,7 @@ zap_opts <- function(transform, verbosity,
                      lgl_threshold, int_threshold, fct_threshold, 
                      dbl_threshold, str_threshold, 
                      str_dict_len_threshold,
-                     str_dict_uniq_threshold,
+                     str_dict_frac_limit,
                      dbl_fallback, ...) {
   
   find_args(...)

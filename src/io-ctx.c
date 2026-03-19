@@ -50,6 +50,9 @@ opts_t *parse_options(SEXP opts_) {
   opts->dbl_threshold =  0;
   opts->str_threshold =  0;
   
+  opts->str_dict_len_threshold  = 8;
+  opts->str_dict_frac_limit = 0.5;
+  
   
   // Sanity check and extract option names from the named list
   if (Rf_isNull(opts_) || Rf_length(opts_) == 0) {
@@ -180,7 +183,14 @@ opts_t *parse_options(SEXP opts_) {
       opts->dbl_threshold = Rf_asInteger(val_); 
     } else if (strcmp(opt_name, "str_threshold") == 0) {
       opts->str_threshold = Rf_asInteger(val_); 
-
+      
+    } else if (strcmp(opt_name, "str_dict_len_threshold") == 0) {
+      opts->str_dict_len_threshold = Rf_asInteger(val_); 
+    } else if (strcmp(opt_name, "str_dict_frac_limit") == 0) {
+      opts->str_dict_frac_limit = Rf_asReal(val_); 
+      opts->str_dict_frac_limit = opts->str_dict_frac_limit < 0 ? 0 : opts->str_dict_frac_limit;
+      opts->str_dict_frac_limit = opts->str_dict_frac_limit > 1 ? 1 : opts->str_dict_frac_limit;
+      
     } else {
       Rf_warning("Unknown option ignored: '%s'\n", opt_name);
     }

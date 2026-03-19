@@ -18,6 +18,8 @@ zap_opts(
   fct_threshold,
   dbl_threshold,
   str_threshold,
+  str_dict_len_threshold,
+  str_dict_frac_limit,
   dbl_fallback,
   ...
 )
@@ -76,8 +78,20 @@ FALSE will disable all transformations.}
         writing out in-full.}
 }}
 
-\item{int_threshold, lgl_threshold, fct_threshold, dbl_threshold, str_threshold}{Below this threshold, no transformation will be done. All default to
+\item{int_threshold, lgl_threshold, fct_threshold, dbl_threshold, str_threshold}{Above this threshold, transformation will be attempted for the different data types.
+Below this threshold, no transformation will be done. All default to
 0, meaning transformation is always attempted.}
+
+\item{str_dict_len_threshold}{Dictionary encoding is only attempted for character vectors longer
+than this threshold.  Default: 8.  Below this threshold, 'mega' string encoding
+is used instead.}
+
+\item{str_dict_frac_limit}{Creating a dictionary encoding of character vectors is only 
+attempted for vectors with (at most) this fraction of unique strings.  Default: 0.5
+E.g. in a length 12 vector if there are 6-or-fewer unique strings then use
+'dict' coding. Otherwise use 'mega' encoding.  If set to 0, then method
+will always default to 'mega' encoding. If set to 1, then method 
+will always use 'dict' encoding.}
 
 \item{dbl_fallback}{if \code{dbl = 'alp'}, the data is not
 always conducive to this compression scheme and after probing the
