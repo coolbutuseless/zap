@@ -170,7 +170,8 @@ void write_ENVSXP(ctx_t *ctx, SEXP env_) {
   for (R_xlen_t i = 0; i < len; i++) {
     SEXP nm_ = PROTECT(Rf_installChar(STRING_ELT(nms_, i)));
     // Rprintf(">>>> %s\n", CHAR(STRING_ELT(nms_, i)));
-    if (Rf_findVar(nm_, env_) == R_MissingArg) {
+    // 2026-03-25 This used to be R_findVar(), but that's now non-API.
+    if (R_getVar(nm_, env_, TRUE) == R_MissingArg) {
       // Rprintf("Environment write. Missing var: '%s'\n", CHAR(STRING_ELT(nms_, i)));
       write_sexp(ctx, R_MissingArg);
       UNPROTECT(1);
