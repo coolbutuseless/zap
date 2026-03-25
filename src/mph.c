@@ -42,8 +42,9 @@ mph_t *mph_init(size_t capacity) {
   if (mph == NULL) {
     return NULL;
   }
-  mph->capacity    = capacity;
-  mph->nitems = 0;
+  mph->capacity         = capacity;
+  mph->nitems           = 0;
+  mph->total_key_length = 0;
   
   mph->bucket = calloc(capacity, sizeof(bucket_t));
   if (mph->bucket == NULL) {
@@ -97,6 +98,7 @@ bool mph_set(mph_t *mph, uint8_t *key, size_t len) {
   }
   
   // Add key to the hashmap
+  mph->total_key_length += len;
   mph->bucket[idx].value = value;
   mph->bucket[idx].hash  = hash;
   mph->bucket[idx].len   = len;
@@ -136,6 +138,7 @@ int32_t mph_get_set(mph_t *mph, uint8_t *key, size_t len) {
   const int32_t value = (int32_t)mph->nitems++;
   
   // Add key to the hashmap
+  mph->total_key_length += len;
   mph->bucket[idx].value = value;
   mph->bucket[idx].hash  = hash;
   mph->bucket[idx].len   = len;

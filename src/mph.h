@@ -1,5 +1,5 @@
 
-#pragma once 
+#pragma once
 
 #define MPH_ERROR -2
 #define MPH_NOT_FOUND -1
@@ -22,6 +22,7 @@ typedef struct {
   bucket_t *bucket; // Array of bucket_t
   size_t capacity;  // Number of buckets
   size_t nitems;    // Number of items in all the buckets
+  size_t total_key_length;
 } mph_t;
 
 
