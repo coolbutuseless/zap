@@ -232,10 +232,12 @@ SEXP read_STRSXP_dict(ctx_t *ctx) {
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Partition the mega string into individual strings
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  SEXP *dict_char = malloc(n_dict_strings * sizeof(SEXP));
+  SEXP dict_charsxp = PROTECT(Rf_allocVector(VECSXP, n_dict_strings));
   for (int i = 0; i < n_dict_strings; i++) {
-    dict_char[i] = PROTECT(Rf_mkChar(mega));
+    SEXP chr = PROTECT(Rf_mkChar(mega));
+    SET_VECTOR_ELT(dict_charsxp, i, chr);
     mega += strlen(mega) + 1;
+    UNPROTECT(1);
   }
 
   // Read the dict indices
@@ -264,11 +266,11 @@ SEXP read_STRSXP_dict(ctx_t *ctx) {
   // Allocate the stirngs
   uint32_t *dict_idx = (uint32_t *)ctx->buf[BUF_IDX];
   for (int i = 0; i < len; i++) {
-    SET_STRING_ELT(obj_, i, dict_char[dict_idx[i]]);
+    SET_STRING_ELT(obj_, i, VECTOR_ELT(dict_charsxp, dict_idx[i]));
   }
 
 
-  UNPROTECT(n_dict_strings);
+  UNPROTECT(1); // dict_charsxp
 
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Set NA values using the auxilliary NA bistream

@@ -6,7 +6,7 @@
 <!-- badges: start -->
 
 ![](https://img.shields.io/badge/cool-useless-green.svg)
-[![CRAN](https://www.r-pkg.org/badges/version/zap)](https://CRAN.R-project.org/package=zap)
+[![CRAN](https://www.r-pkg.org/badges/version/zap)](https://cran.r-project.org/package=zap)
 [![R-CMD-check](https://github.com/coolbutuseless/zap/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/coolbutuseless/zap/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
