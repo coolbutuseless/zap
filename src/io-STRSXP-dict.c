@@ -110,40 +110,30 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   // Otherwise, we can use a dictionary and encode the character vector as
   // an integer vector
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // Rprintf("STRSXP: Using Dict\n");
-  uint64_t total_chars = 0;
-
-  prepare_buf(ctx, BUF_DICT, mph->nitems * sizeof(char *));
-  char **dict = (char **)ctx->buf[BUF_DICT];
+  int *idx_to_bucket = malloc(mph->nitems * sizeof(int));
+  if (idx_to_bucket == NULL) Rf_error("Alloc error: idx_to_bucket");
 
   for (int i = 0; i < mph->capacity; i++) {
     bucket_t b = mph->bucket[i];
     if (b.key != NULL) {
-      // Rprintf("[%i] %s\n", i, b.key);
-      total_chars += b.len;
-      
-      dict[b.value] = malloc(b.len);
-      if (dict[b.value] == NULL) Rf_error("dict[] alloc error");
-      strncpy(dict[b.value], (char *)b.key, b.len);
+      idx_to_bucket[b.value] = i;
     }
   }
-  // Rprintf("TOTAL: %i\n", (int)total_chars);
 
-  // for (int i = 0; i < len; i++) {
-  //   Rprintf("[%i] %i\n", i, dict_idx[i]);
-  // }
-  
-  prepare_buf(ctx, BUF_MEGA, total_chars + 1);
+  // Create the mega string
+  prepare_buf(ctx, BUF_MEGA, mph->total_key_length + 1);
   char *dictp = (char *)ctx->buf[BUF_MEGA];
+  
   for (int i = 0; i < mph->nitems; i++) {
-    // Rprintf("[%i] -> %s\n", i, dict[i]);
+    int bucket_idx = idx_to_bucket[i];
+    bucket_t b = mph->bucket[bucket_idx];
 
-    unsigned long slen = (unsigned long)strlen(dict[i]) + 1;
-    // Rprintf("slen: %lu\n", slen);
-    strncpy(dictp, dict[i], slen);
-    dictp += slen;  
-    free(dict[i]);
+    strncpy(dictp, (const char *)b.key, b.len);
+    dictp += b.len;
   }
+  free(idx_to_bucket);
+  
+  // Reset dictp pointer to the start of the mega string
   dictp = (char *)ctx->buf[BUF_MEGA];
 
   // for (int i = 0; i < total_chars; i++) {
@@ -166,7 +156,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   write_uint8(ctx, STRSXP);
   write_uint8(ctx, ZAP_STR_DICT);
   write_len(ctx, len);
-  write_len(ctx, total_chars);
+  write_len(ctx, mph->total_key_length);
   
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   // Create the auxilliary bitstream of NA locations
@@ -178,7 +168,7 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   // Output character data
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   write_len(ctx, mph->nitems);
-  write_buf(ctx, BUF_MEGA, (size_t)total_chars);
+  write_buf(ctx, BUF_MEGA, mph->total_key_length);
 
 
   // write_uint32_buf(ctx, BUF_IDX, len);
