@@ -75,7 +75,6 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   // Prep room for the index
   prepare_buf(ctx, BUF_IDX, len * sizeof(int32_t));
   int32_t *dict_idx = (int32_t *)ctx->buf[BUF_IDX];
-  if (dict_idx == NULL) Rf_error("write_STRSXP_dict_(): Couldn't initialise integer idx");
   
   for (int i = 0; i < len; i++) {
     SEXP chr_ = STRING_ELT(x_, i);
@@ -110,8 +109,8 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
   // Otherwise, we can use a dictionary and encode the character vector as
   // an integer vector
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  int *idx_to_bucket = malloc(mph->nitems * sizeof(int));
-  if (idx_to_bucket == NULL) Rf_error("Alloc error: idx_to_bucket");
+  prepare_buf(ctx, BUF_DICT, mph->nitems * sizeof(int32_t));
+  int32_t *idx_to_bucket = (int32_t *)ctx->buf[BUF_DICT];
 
   for (int i = 0; i < mph->capacity; i++) {
     bucket_t b = mph->bucket[i];
@@ -131,7 +130,6 @@ void write_STRSXP_dict(ctx_t *ctx, SEXP x_) {
     strncpy(dictp, (const char *)b.key, b.len);
     dictp += b.len;
   }
-  free(idx_to_bucket);
   
   // Reset dictp pointer to the start of the mega string
   dictp = (char *)ctx->buf[BUF_MEGA];
